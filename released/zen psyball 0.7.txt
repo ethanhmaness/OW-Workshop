@@ -1,0 +1,1677 @@
+settings
+{
+	main
+	{
+		Description: "[Zenyatta Psychic Paintball v0.7.2 | Code XKMN6P] A bunch of psionic-laser-weapon-wielding robot monks duke it out in a deadly arena brawl! Get kills to reroll your loadout. Everything oneshots, so don't get hit! --- By ELIMINATED#1572.  {Version updates at https://workshop.codes/zen-psyball}"
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: Yes
+		Max Team 1 Players: 5
+		Max Team 2 Players: 5
+	}
+
+	modes
+	{
+		Capture the Flag
+		{
+			Flag Dropped Lock Time: 0.0
+			Flag Return Time: 0.0
+			Flag Score Respawn Time: 0.0
+			Game Length Minutes: 15
+			Respawn Speed Buff Duration: 5.0
+			Score To Win: 5
+			Team Needs Flag At Base To Score: On
+
+			disabled maps
+			{
+				Lijiang Control Center
+				Lijiang Garden
+				Lijiang Night Market
+			}
+		}
+
+		Control
+		{
+			Capture Speed Modifier: 75%
+			Score To Win: 1
+			Scoring Speed Modifier: 40%
+		}
+
+		disabled Team Deathmatch
+		{
+			Score To Win: 50
+			Self Initiated Respawn: Off
+		}
+
+		General
+		{
+			Hero Limit: Off
+			Respawn Time Scalar: 30%
+			Spawn Health Packs: Disabled
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			enabled heroes
+			{
+				Zenyatta
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: singleTickTemp1
+		1: singleTickTemp2
+		2: collisionInfo
+		3: enabledWeaponIDs
+		4: enabledAbilityIDs
+		5: collisionBullet
+
+	player:
+		0: bullets
+		1: weaponProperties
+		2: bulletBeams
+		3: loadoutIDs
+		4: loadoutNames
+		5: playerColor
+		6: reloadTimer
+		7: rerolls
+		8: hudTexts
+		9: multiShotIterator
+		10: explosions
+		11: explosionSpheres
+		12: moveSpeed
+		13: blockAbilities
+		14: jetpackFuel
+		15: shotPersistentAngle
+}
+
+subroutines
+{
+	0: setRandomLoadout
+	1: bulletCollides
+	2: updateMoveSpeed
+	3: updateJetpackFuelText
+}
+
+rule("short assemble")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(5);
+	}
+}
+
+rule("short setup")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is In Setup == True;
+	}
+
+	actions
+	{
+		Set Match Time(10);
+	}
+}
+
+rule("init enabled weapon IDs array (Edit when changing any IDs)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.enabledWeaponIDs = Empty Array;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("SMG"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 1);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Laser"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 2);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Revolver"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 3);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Shotgun"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 4);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Burst"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 5);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Grenade Launcher"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 6);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("Molotov"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 7);
+		End;
+		If(Workshop Setting Toggle(Custom String("Weapons"), Custom String("RPG"), True, 0) == True);
+			Modify Global Variable(enabledWeaponIDs, Append To Array, 8);
+		End;
+	}
+}
+
+rule("init enabled ability IDs array (Edit when changing any IDs)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.enabledAbilityIDs = Empty Array;
+		If(Workshop Setting Toggle(Custom String("Abilities"), Custom String("Sprint"), True, 0) == True);
+			Modify Global Variable(enabledAbilityIDs, Append To Array, 1);
+		End;
+		If(Workshop Setting Toggle(Custom String("Abilities"), Custom String("Jetpack"), True, 0) == True);
+			Modify Global Variable(enabledAbilityIDs, Append To Array, 2);
+		End;
+		If(Workshop Setting Toggle(Custom String("Abilities"), Custom String("Air Dash"), True, 0) == True);
+			Modify Global Variable(enabledAbilityIDs, Append To Array, 3);
+		End;
+		If(Workshop Setting Toggle(Custom String("Abilities"), Custom String("Hand Grenade"), True, 0) == True);
+			Modify Global Variable(enabledAbilityIDs, Append To Array, 4);
+		End;
+	}
+}
+
+rule("credits")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		If(Workshop Setting Toggle(Custom String("Credit"), Custom String("Show Credit"), True, 0) == True);
+			"If you so choose, you can add credit for yourself if you have added to this mode.  Do not be a child and remove others' credit for their work."
+			Create HUD Text(All Players(All Teams), Null, Custom String("Zenyatta Psychic Paintball v0.7.2 by ELIMINATED#1572"), Null, Left,
+				-1000, Color(White), Color(Yellow), Color(White), Visible To and String, Default Visibility);
+			Create HUD Text(All Players(All Teams), Null, Custom String(" "), Null, Left, -999, Color(White), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+		End;
+	}
+}
+
+rule("disable inspector (decreases lag)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Disable Inspector Recording;
+	}
+}
+
+rule("init global texts")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(All Players(All Teams), Null, Custom String("Load Avg/Peak"), Custom String("{0}/{1}", Server Load Average,
+			Server Load Peak), Right, 0, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), !(Is In Spawn Room(Current Array Element) || Is Dead(
+			Current Array Element))), Null, Null, Custom String("Reroll loadout while dead or in spawn"), Left, 1, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), (Is In Spawn Room(Current Array Element) || Is Dead(Current Array Element))
+			&& Current Array Element.rerolls > 0), Custom String("Press [{0}] to reroll weapon", Input Binding String(Button(Interact))),
+			Null, Null, Left, 2, Color(Lime Green), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), (Is In Spawn Room(Current Array Element) || Is Dead(Current Array Element))
+			&& Current Array Element.rerolls <= 0), Custom String("Kill enemies to earn rerolls", Input Binding String(Button(Interact))),
+			Null, Null, Left, 2, Color(Gray), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Is Reloading(Current Array Element)), Null, Null, Custom String(
+			"Reloading..."), Top, 11, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("init global spacing texts")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Event Player.rerolls = Workshop Setting Integer(Custom String("Values"), Custom String("Initial Rerolls"), 3, 0, 69, 0);
+		Set Ability 1 Enabled(Event Player, False);
+		Set Ability 2 Enabled(Event Player, False);
+		Set Primary Fire Enabled(Event Player, False);
+		Set Secondary Fire Enabled(Event Player, False);
+		Set Ultimate Ability Enabled(Event Player, False);
+		Event Player.bullets = Empty Array;
+		Event Player.bulletBeams = Empty Array;
+		Event Player.explosions = Empty Array;
+		Event Player.explosionSpheres = Empty Array;
+		Call Subroutine(setRandomLoadout);
+		If(Team Of(Event Player) == Team 1);
+			Event Player.playerColor = Color(Sky Blue);
+		Else;
+			Event Player.playerColor = Color(Orange);
+		End;
+		Create HUD Text(Event Player, Custom String("Rerolls: {0}", Event Player.rerolls), Null, Null, Left, 3, Custom Color(127,
+			127 + 128 * (Event Player.rerolls > 0), 127, 255), Color(White), Color(White), Visible To String and Color,
+			Default Visibility);
+		Event Player.hudTexts[0] = Last Text ID;
+		Create HUD Text(Event Player, Null, Custom String("Weapon"), Event Player.loadoutNames[0], Left, 4, Color(White), Color(White),
+			Event Player.playerColor, Visible To and String, Default Visibility);
+		Event Player.hudTexts[1] = Last Text ID;
+		Create HUD Text(Event Player, Null, Custom String("Ability 1 [{0}]", Input Binding String(Button(Ability 1))),
+			Event Player.loadoutNames[1], Left, 5, Color(White), Color(White), Event Player.playerColor, Visible To and String,
+			Default Visibility);
+		Event Player.hudTexts[2] = Last Text ID;
+		Set Max Health(Event Player, 12.500);
+	}
+}
+
+rule("Player Left destroy effects")
+{
+	event
+	{
+		Player Left Match;
+		All;
+		All;
+	}
+
+	actions
+	{
+		"destroy all bullet effects"
+		For Global Variable(singleTickTemp1, 0, Count Of(Event Player.bulletBeams), 1);
+			Destroy Effect(Event Player.bulletBeams[Global.singleTickTemp1]);
+		End;
+		"destroy all hud texts"
+		For Global Variable(singleTickTemp1, 0, Count Of(Event Player.hudTexts), 1);
+			Destroy HUD Text(Event Player.hudTexts[Global.singleTickTemp1]);
+		End;
+		"destroy all explosion effects"
+		For Global Variable(singleTickTemp1, 0, Count Of(Event Player.explosionSpheres), 1);
+			Destroy Effect(Event Player.bulletBeams[Global.singleTickTemp1]);
+		End;
+	}
+}
+
+rule("Subroutine: setRandomLoadout (Update when adding new weapon or ability ID)")
+{
+	event
+	{
+		Subroutine;
+		setRandomLoadout;
+	}
+
+	actions
+	{
+		"//Comment block: [0] = Weapon, [1] = Primary Ability"
+		Abort If(False);
+		If(Filtered Array(Global.enabledWeaponIDs, Current Array Element != Event Player.loadoutIDs[0]) != Empty Array);
+			Event Player.loadoutIDs[0] = Random Value In Array(Filtered Array(Global.enabledWeaponIDs,
+				Current Array Element != Event Player.loadoutIDs[0]));
+		End;
+		If(Filtered Array(Global.enabledAbilityIDs, Current Array Element != Event Player.loadoutIDs[1]) != Empty Array);
+			Event Player.loadoutIDs[1] = Random Value In Array(Filtered Array(Global.enabledAbilityIDs,
+				Current Array Element != Event Player.loadoutIDs[1]));
+		End;
+		Small Message(Event Player, Custom String("Equipped {0}, {1}", Event Player.loadoutNames[0], Event Player.loadoutNames[1]));
+	}
+}
+
+rule("Subroutine: updateMoveSpeed")
+{
+	event
+	{
+		Subroutine;
+		updateMoveSpeed;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, Event Player.moveSpeed);
+	}
+}
+
+rule("Subroutine: Bullet collides")
+{
+	event
+	{
+		Subroutine;
+		bulletCollides;
+	}
+
+	actions
+	{
+		"//Comment block: Subroutine requires collisionInfo[0] = bullet index, collisionInfo[1] = collision target (either pos or player)"
+		Abort If(False);
+		"collisionBullet = the bullet array of the colliding bullet"
+		Global.collisionBullet = Event Player.bullets[Global.collisionInfo[0]];
+		"collisionInfo[2] = is collisionInfo[1] a player?"
+		Global.collisionInfo[2] = Array Contains(All Players(All Teams), Global.collisionInfo[1]);
+		"if player hit"
+		If(Global.collisionInfo[2]);
+			"kill player"
+			Kill(Global.collisionInfo[1], Event Player);
+			"death splat"
+			Play Effect(All Players(All Teams), Bad Explosion, Event Player.playerColor, Global.collisionInfo[1], 1);
+			"if explosive and not piercing"
+			If(Global.collisionBullet[7] != Empty Array && !Global.collisionBullet[5]);
+				"appends to \"explosions\" a new explosion array of collision pos concatenated with the bullet's explosioninfo array"
+				Modify Player Variable(Event Player, explosions, Append To Array, Array(Append To Array(Global.collisionInfo[1],
+					Global.collisionBullet[7])));
+			Else;
+				"splat sound"
+				Play Effect(All Players(All Teams), Explosion Sound, Event Player.playerColor, Global.collisionInfo[1], (Magnitude Of(
+					Global.collisionBullet[2]) * 3) ^ 0.667);
+			End;
+			"if bullet is not piercing"
+			If(Global.collisionBullet[5] != True);
+				"delete bullet"
+				Modify Player Variable(Event Player, bullets, Remove From Array By Index, Global.collisionInfo[0]);
+			End;
+		"if not player hit"
+		Else;
+			"if can ricochet and has >0 remaining bounces"
+			If(Global.collisionBullet[9] != Empty Array && Global.collisionBullet[9][0] > 0);
+				"collisionInfo[3] = ricochet surface normal"
+				Global.collisionInfo[3] = Ray Cast Hit Normal(Global.collisionBullet[1], Global.collisionBullet[0], Null, Event Player, False);
+				"Velocity is reflected: r = v - 2(v•n)n"
+				Global.collisionBullet[2] -= 2 * Global.collisionInfo[3] * Dot Product(Global.collisionBullet[2], Global.collisionInfo[3]);
+				"apply ricochet speed mult to velocity"
+				Global.collisionBullet[2] *= Global.collisionBullet[9][1];
+				"set frontpos of bullet to where it intersects the surface"
+				Global.collisionBullet[0] = Global.collisionInfo[1];
+				"subtract 1 from first value in richochetinfo array (the number of remaining bounces)"
+				Global.collisionBullet[9] = Append To Array(Global.collisionBullet[9][0] - 1, Remove From Array(Global.collisionBullet[9],
+					Global.collisionBullet[9][0]));
+				"plug this modified bullet array back in for the original bullet"
+				Event Player.bullets[Global.collisionInfo[0]] = Global.collisionBullet;
+			Else;
+				"if explosive"
+				If(Global.collisionBullet[7] != Empty Array);
+					"appends to \"explosions\" a new explosion array of collision pos concatenated with the bullet's explosioninfo array"
+					Modify Player Variable(Event Player, explosions, Append To Array, Array(Append To Array(Global.collisionInfo[1],
+						Global.collisionBullet[7])));
+				Else;
+					"splat effect"
+					Play Effect(All Players(All Teams), Bad Explosion, Event Player.playerColor, Global.collisionInfo[1], (Magnitude Of(
+						Global.collisionBullet[2]) / 300) ^ 0.667);
+					Play Effect(All Players(All Teams), Explosion Sound, Event Player.playerColor, Global.collisionInfo[1], (Magnitude Of(
+						Global.collisionBullet[2]) * 3) ^ 0.667);
+				End;
+				"delete bullet"
+				Modify Player Variable(Event Player, bullets, Remove From Array By Index, Global.collisionInfo[0]);
+			End;
+		End;
+	}
+}
+
+rule("Bullet handler (physics, collisions)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.bullets != Empty Array;
+	}
+
+	actions
+	{
+		"//Comment block: \"bullets\" is a multidimensional array of 10-element bullet arrays containing [newpos, oldpos, velocity, gravity, acceleration vector, piercing, maxdistance, explosionarray, remaining time, richochetinfo]"
+		Abort If(False);
+		"runs loop for each bullet array in bullets"
+		For Global Variable(singleTickTemp1, 0, Count Of(Event Player.bullets), 1);
+			"temp2 = bullets[index]"
+			Global.singleTickTemp2 = Event Player.bullets[Global.singleTickTemp1];
+			"oldpos = newpos"
+			Global.singleTickTemp2[1] = Global.singleTickTemp2[0];
+			"newpos += 0.016 * velocity"
+			Global.singleTickTemp2[0] += Global.singleTickTemp2[2] * 0.016;
+			"velocity += 0.016 * (gravity * up + acceleration)"
+			Global.singleTickTemp2[2] += (Up * Global.singleTickTemp2[3] + Global.singleTickTemp2[4]) * 0.016;
+			"remaining time -= 0.016"
+			Global.singleTickTemp2[8] -= 0.016;
+			"bullets[index] = temp2"
+			Event Player.bullets[Global.singleTickTemp1] = Global.singleTickTemp2;
+			"temp2 = ray cast hit pos from bullet's oldpos to newpos"
+			Global.singleTickTemp2 = Ray Cast Hit Position(Event Player.bullets[Global.singleTickTemp1][1],
+				Event Player.bullets[Global.singleTickTemp1][0], Null, Null, False);
+			"if ray cast hits geometry"
+			If(Global.singleTickTemp2 != Event Player.bullets[Global.singleTickTemp1][0]);
+				Global.collisionInfo[0] = Global.singleTickTemp1;
+				Global.collisionInfo[1] = Global.singleTickTemp2;
+				Call Subroutine(bulletCollides);
+			End;
+			"only runs next block if enemy is near bullet b/c its EXTREMELY expensive on server load (it is responsible for giving the bullets a volumetric hitbox)"
+			If(Distance Between(Event Player.bullets[Global.singleTickTemp1][0], Closest Player To(
+				Event Player.bullets[Global.singleTickTemp1][0], Opposite Team Of(Team Of(Event Player))) + Up) < Max(2,
+				2 * 0.016 * Magnitude Of(Event Player.bullets[Global.singleTickTemp1][2])));
+				"temp2 = [vector from bullet frontpos to backpos, vector from center of closest enemy to bullet frontpos]"
+				Global.singleTickTemp2 = Array(Event Player.bullets[Global.singleTickTemp1][1] - Event Player.bullets[Global.singleTickTemp1][0],
+					Closest Player To(Event Player.bullets[Global.singleTickTemp1][0], Opposite Team Of(Team Of(Event Player)))
+					+ Up - Event Player.bullets[Global.singleTickTemp1][0]);
+				"temp2[2] = temp2[1] • temp2[2]"
+				Modify Global Variable(singleTickTemp2, Append To Array, Dot Product(Global.singleTickTemp2[1], Global.singleTickTemp2[0]));
+				"temp2[3] = temp2[0] • temp2[0]"
+				Modify Global Variable(singleTickTemp2, Append To Array, Dot Product(Global.singleTickTemp2[0], Global.singleTickTemp2[0]));
+				"if center of enemy player is closest to front of bullet"
+				If(Global.singleTickTemp2[2] <= 0);
+					"temp2 = [front of bullet, vector from front of bullet to center of enemy]"
+					Global.singleTickTemp2 = Array(Event Player.bullets[Global.singleTickTemp1][0], Closest Player To(
+						Event Player.bullets[Global.singleTickTemp1][0], Opposite Team Of(Team Of(Event Player)))
+						+ Up - Event Player.bullets[Global.singleTickTemp1][0]);
+				"if center of enemy player is closest to back of bullet"
+				Else If(Global.singleTickTemp2[3] <= Global.singleTickTemp2[2]);
+					"temp2 = [back of bullet, vector from back of bullet to center of enemy]"
+					Global.singleTickTemp2 = Array(Event Player.bullets[Global.singleTickTemp1][1], Closest Player To(
+						Event Player.bullets[Global.singleTickTemp1][0], Opposite Team Of(Team Of(Event Player)))
+						+ Up - Event Player.bullets[Global.singleTickTemp1][1]);
+				"if center of enemy player is closest to somewhere in the middle of the bullet"
+				Else;
+					"temp2 = [closest point of bullet, vector from closest point of bullet to center of enemy]"
+					Global.singleTickTemp2 = Array(
+						Event Player.bullets[Global.singleTickTemp1][0] + Global.singleTickTemp2[2] / Global.singleTickTemp2[3] * Global.singleTickTemp2[0],
+						Closest Player To(Event Player.bullets[Global.singleTickTemp1][0], Opposite Team Of(Team Of(Event Player)))
+						+ Up - Event Player.bullets[Global.singleTickTemp1][0] + Global.singleTickTemp2[2] / Global.singleTickTemp2[3] * Global.singleTickTemp2[0]);
+				End;
+				"temp2 = enemy hit (by short raycast from point on bullet nearest to closest enemy's torso to the enemy's torso)"
+				Global.singleTickTemp2 = Ray Cast Hit Player(Global.singleTickTemp2[0], Global.singleTickTemp2[0] + 0.250 * Normalize(
+					Global.singleTickTemp2[1]), All Living Players(Opposite Team Of(Team Of(Event Player))), Event Player, True);
+				"if enemy is hit"
+				If(Global.singleTickTemp2 != Null);
+					Global.collisionInfo[0] = Global.singleTickTemp1;
+					Global.collisionInfo[1] = Global.singleTickTemp2;
+					Call Subroutine(bulletCollides);
+				End;
+			End;
+			"if bullet exceeds max distance or time"
+			If(Event Player.bullets[Global.singleTickTemp1][8] <= 0 || Distance Between(Event Player.bullets[Global.singleTickTemp1][0],
+				Eye Position(Event Player)) > Event Player.bullets[Global.singleTickTemp1][6]);
+				Global.collisionInfo[0] = Global.singleTickTemp1;
+				Global.collisionInfo[1] = Event Player.bullets[Global.singleTickTemp1][0];
+				Call Subroutine(bulletCollides);
+			End;
+		End;
+		"wait until next tick"
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Bullet beam handler (create/destroy beams)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Count Of(Event Player.bullets) != Count Of(Event Player.bulletBeams);
+	}
+
+	actions
+	{
+		"create new beam effects if more bullet arrays exist than beam effects"
+		If(Count Of(Event Player.bullets) > Count Of(Event Player.bulletBeams));
+			For Global Variable(singleTickTemp1, Count Of(Event Player.bulletBeams), Count Of(Event Player.bullets), 1);
+				Create Beam Effect(All Players(All Teams), Bad Beam, Event Player.bullets[Evaluate Once(Global.singleTickTemp1)][1],
+					Event Player.bullets[Evaluate Once(Global.singleTickTemp1)][0], Event Player.playerColor, Visible To Position and Radius);
+				Event Player.bulletBeams[Global.singleTickTemp1] = Last Created Entity;
+			End;
+		End;
+		"destroy excess beam effects if less bullet arrays exist than beam effects"
+		If(Count Of(Event Player.bullets) < Count Of(Event Player.bulletBeams));
+			For Global Variable(singleTickTemp1, Count Of(Event Player.bullets), Count Of(Event Player.bulletBeams), 1);
+				Destroy Effect(Event Player.bulletBeams[Global.singleTickTemp1]);
+				Modify Player Variable(Event Player, bulletBeams, Remove From Array By Index, Global.singleTickTemp1);
+			End;
+		End;
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Explosion handler")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.explosions != Empty Array;
+	}
+
+	actions
+	{
+		"//Comment block: \"explosions\" is a 2D array of 5-element explosion arrays containing [pos, rad, remaining time, growth rate, particle size(not used here)]"
+		Abort If(False);
+		"runs loop for each bullet array in bullets"
+		For Global Variable(singleTickTemp1, 0, Count Of(Event Player.explosions), 1);
+			"temp2 = explosions[index]"
+			Global.singleTickTemp2 = Event Player.explosions[Global.singleTickTemp1];
+			"radius += 0.016 * growth rate"
+			Global.singleTickTemp2[1] += 0.016 * Global.singleTickTemp2[3];
+			"kill enemies (and self) in explosion"
+			Kill(Filtered Array(Append To Array(All Living Players(Opposite Team Of(Team Of(Event Player))), Filtered Array(Event Player,
+				Is Alive(Event Player))), Distance Between(Position Of(Current Array Element), Global.singleTickTemp2[0])
+				< Global.singleTickTemp2[1] || Distance Between(Eye Position(Current Array Element), Global.singleTickTemp2[0])
+				< Global.singleTickTemp2[1]), Event Player);
+			"decrease remaining time of explosion"
+			Global.singleTickTemp2[2] -= 0.016;
+			"explosions[index] = temp2"
+			Event Player.explosions[Global.singleTickTemp1] = Global.singleTickTemp2;
+			"if explosion remaining time <= 0"
+			If(Event Player.explosions[Global.singleTickTemp1][2] <= 0);
+				"delete explosion"
+				Modify Player Variable(Event Player, explosions, Remove From Array By Index, Global.singleTickTemp1);
+			End;
+		End;
+		"wait until next tick"
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Explosion sphere handler (create/destroy spheres)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Count Of(Event Player.explosions) != Count Of(Event Player.explosionSpheres);
+	}
+
+	actions
+	{
+		"create new sphere effects if more explosion arrays exist than sphere effects"
+		If(Count Of(Event Player.explosions) > Count Of(Event Player.explosionSpheres));
+			For Global Variable(singleTickTemp1, Count Of(Event Player.explosionSpheres), Count Of(Event Player.explosions), 1);
+				"temp2 = particle size"
+				Global.singleTickTemp2 = Event Player.explosions[Global.singleTickTemp1][4];
+				"explosion particle"
+				Play Effect(All Players(All Teams), Bad Explosion, Event Player.playerColor, Event Player.explosions[Global.singleTickTemp1][0],
+					Global.singleTickTemp2);
+				Play Effect(All Players(All Teams), Debuff Impact Sound, Event Player.playerColor,
+					Event Player.explosions[Global.singleTickTemp1][0], Global.singleTickTemp2 + 40 * Global.singleTickTemp2 ^ 2);
+				"sphere"
+				Create Effect(All Players(All Teams), Sphere, Event Player.playerColor, Event Player.explosions[Evaluate Once(
+					Global.singleTickTemp1)][0], Event Player.explosions[Evaluate Once(Global.singleTickTemp1)][1],
+					Visible To Position Radius and Color);
+				Event Player.explosionSpheres[Global.singleTickTemp1] = Last Created Entity;
+			End;
+		End;
+		"destroy excess sphere effects if less explosion arrays exist than sphere effects"
+		If(Count Of(Event Player.explosions) < Count Of(Event Player.explosionSpheres));
+			For Global Variable(singleTickTemp1, Count Of(Event Player.explosions), Count Of(Event Player.explosionSpheres), 1);
+				Destroy Effect(Event Player.explosionSpheres[Global.singleTickTemp1]);
+				Modify Player Variable(Event Player, explosionSpheres, Remove From Array By Index, Global.singleTickTemp1);
+			End;
+		End;
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("On Kill: +1 reroll")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Victim != Attacker;
+	}
+
+	actions
+	{
+		Event Player.rerolls += 1;
+	}
+}
+
+rule("On Death: Forced Reroll")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker != Victim;
+	}
+
+	actions
+	{
+		Wait Until(Is Alive(Event Player), 99999);
+		Call Subroutine(setRandomLoadout);
+	}
+}
+
+rule("[Interact] in spawn or while dead to reroll weapon")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Is In Spawn Room(Event Player) || Is Dead(Event Player)) == True;
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.rerolls > 0;
+	}
+
+	actions
+	{
+		Call Subroutine(setRandomLoadout);
+		Event Player.rerolls -= 1;
+		Wait(0.016, Ignore Condition);
+	}
+}
+
+rule("Custom Reload timer")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Reloading(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.reloadTimer = Event Player.weaponProperties[1];
+		While(Event Player.reloadTimer > 1.100);
+			Wait(Min(1, Event Player.reloadTimer - 1.100), Abort When False);
+			Cancel Primary Action(Event Player);
+			Press Button(Event Player, Button(Reload));
+			Event Player.reloadTimer -= Min(1, Event Player.reloadTimer - 1.100);
+		End;
+		Wait(Event Player.reloadTimer, Abort When False);
+		Set Ammo(Event Player, 0, Max Ammo(Event Player, 0));
+	}
+}
+
+rule("Weapon 1 (SMG) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 1;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("SMG");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(0.250, 2, 10);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 115;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 1 (SMG) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 1;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.040;
+		"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+		Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+			Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+			Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+		"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+		Global.singleTickTemp1 = 75 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), False, 150, Empty Array, 3, Empty Array);
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 30);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 2 (Laser) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 2;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Laser");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(0.700, 2, 5);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 100;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 2 (Laser) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 2;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = velocity = speed * facing direction"
+		Global.singleTickTemp1 = 250 * Facing Direction Of(Event Player);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]; ricochetinfo = [maxbounces, speedmult]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), True, 300, Empty Array, 2, Array(2, 1));
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 50);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 3 (Revolver) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 3;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Revolver");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(0.450, 1.500, 6);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 105;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 3 (Revolver) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 3;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.010;
+		"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+		Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+			Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+			Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+		"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+		Global.singleTickTemp1 = 115 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), False, 250, Empty Array, 5, Empty Array);
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 35);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 4 (Shotgun) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 4;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Shotgun");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(1.150, 2, 3);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 100;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 4 (Shotgun) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 4;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = random rotation"
+		Event Player.shotPersistentAngle = Random Real(0, 72);
+		For Player Variable(Event Player, multiShotIterator, 0, 5, 1);
+			"temp2 = [relative left, relative up, relative forwards, spread angle, spread distance]"
+			Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+				Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+				Event Player.shotPersistentAngle + 72 * Event Player.multiShotIterator, 0.050);
+			"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+			Global.singleTickTemp1 = 55 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+				Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+				Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+			"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]"
+			Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+				0, 0), False, 100, Empty Array, 2, Empty Array);
+			"add new bullet to bullets array"
+			Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+			"sound"
+			Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 30);
+		End;
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 5 (Burst) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 5;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Burst");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(0.800, 2, 9);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 105;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 5 (Burst) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 5;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		For Player Variable(Event Player, multiShotIterator, 0, 3, 1);
+			"stop burst if out of ammo"
+			If(Ammo(Event Player, 0) == 0);
+				Break;
+			End;
+			"use ammo"
+			Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+			"temp1 = max spread ratio"
+			Global.singleTickTemp1 = 0.020;
+			"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+			Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+				Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+				Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+			"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+			Global.singleTickTemp1 = 100 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+				Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+				Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+			"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]"
+			Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+				0, 0), False, 200, Empty Array, 4, Empty Array);
+			"add new bullet to bullets array"
+			Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+			"sound"
+			Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 30);
+			Wait(0.100, Ignore Condition);
+		End;
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 6 (Grenade Launcher) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 6;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Grenade Launcher");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(1, 2.500, 4);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 105;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 6 (Grenade Launcher) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 6;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.040;
+		"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+		Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+			Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+			Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+		"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+		Global.singleTickTemp1 = 50 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]; explosioninfo = [init rad, duration, growth rate, particle size]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), False, 125, Array(1, 0.256, 4, 2), 2, Empty Array);
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 50);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 7 (Molotov) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 7;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("Molotov");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(0.900, 3, 3);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 100;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 7 (Molotov) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 7;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.060;
+		"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+		Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+			Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+			Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+		"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+		Global.singleTickTemp1 = 50 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]; explosioninfo = [init rad, duration, growth rate, particle size]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), True, 100, Array(0.500, 1.500, 1, 2.500), 4, Empty Array);
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 30);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Weapon 8 (RPG) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[0] == 8;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames = Custom String("RPG");
+		"[0] = firing delay, [1] = reload delay, [2] = max ammo"
+		Event Player.weaponProperties = Array(1.200, 2, 3);
+		Set Max Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Set Ammo(Event Player, 0, Event Player.weaponProperties[2]);
+		Event Player.moveSpeed = 100;
+		Call Subroutine(updateMoveSpeed);
+	}
+}
+
+rule("Weapon 8 (RPG) Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[0] == 8;
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+		Ammo(Event Player, 0) > 0;
+		Is Alive(Event Player) == True;
+		Event Player.blockAbilities != True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"use ammo"
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) - 1);
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.040;
+		"temp1 = velocity = speed * facing direction"
+		Global.singleTickTemp1 = 40 * Facing Direction Of(Event Player);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]; explosioninfo = [init rad, duration, growth rate, particle size]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, 0,
+			60 * Facing Direction Of(Event Player), False, 150, Array(1, 0.256, 4, 2), 3, Empty Array);
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		"sound"
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Eye Position(Event Player), 50);
+		"firing delay"
+		Wait(Event Player.weaponProperties[0], Ignore Condition);
+		Loop If Condition Is True;
+		Allow Button(Event Player, Button(Reload));
+	}
+}
+
+rule("Primary Ability 1 (Sprint) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[1] == 1;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames[1] = Custom String("Sprint");
+	}
+}
+
+rule("Primary Ability 1 (Sprint) Use")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Event Player.loadoutIDs[1] == 1;
+		Is Reloading(Event Player) == False;
+		Is Alive(Event Player) == True;
+		Player Carrying Flag(Opposite Team Of(Team Of(Event Player))) != Event Player;
+	}
+
+	actions
+	{
+		Event Player.blockAbilities = True;
+		Event Player.moveSpeed *= 1.400;
+		Call Subroutine(updateMoveSpeed);
+		Wait Until(!Is Button Held(Event Player, Button(Ability 1)) || Is Reloading(Event Player) || Player Carrying Flag(Opposite Team Of(
+			Team Of(Event Player))) == Event Player, 99999);
+		Event Player.moveSpeed /= 1.400;
+		Call Subroutine(updateMoveSpeed);
+		Event Player.blockAbilities = False;
+		Wait(2, Ignore Condition);
+		If(Player Carrying Flag(All Teams) != Event Player);
+			Small Message(Event Player, Custom String("Sprint Ready"));
+		End;
+	}
+}
+
+rule("Primary Ability 2 (Jetpack) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[1] == 2;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames[1] = Custom String("Jetpack");
+	}
+}
+
+rule("Primary Ability 2 (Jetpack) Use")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Event Player.loadoutIDs[1] == 2;
+		Is Alive(Event Player) == True;
+		Player Carrying Flag(Opposite Team Of(Team Of(Event Player))) != Event Player;
+	}
+
+	actions
+	{
+		Start Accelerating(Event Player, Direction From Angles(Horizontal Facing Angle Of(Event Player), -75), 40, 3.500, To World,
+			Direction Rate and Max Speed);
+		While(Is Button Held(Event Player, Button(Ability 1)) && Event Player.jetpackFuel > 0);
+			Play Effect(All Players(All Teams), Ring Explosion, Event Player.playerColor, Update Every Frame(Position Of(Event Player)), 1);
+			Event Player.jetpackFuel -= 0.016;
+			Call Subroutine(updateJetpackFuelText);
+			Wait(0.016, Ignore Condition);
+		End;
+		Stop Accelerating(Event Player);
+		If(Event Player.jetpackFuel < 0);
+			Event Player.jetpackFuel = 0;
+			Call Subroutine(updateJetpackFuelText);
+		End;
+	}
+}
+
+rule("Primary Ability 2 (Jetpack) Refuel")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.loadoutIDs[1] == 2;
+		Event Player.jetpackFuel < 2;
+		Is Button Held(Event Player, Button(Ability 1)) == False;
+	}
+
+	actions
+	{
+		Wait(1, Abort When False);
+		While(!Is Button Held(Event Player, Button(Ability 1)) && Event Player.jetpackFuel < 2);
+			Wait(0.100, Ignore Condition);
+			Event Player.jetpackFuel += 0.025;
+			Call Subroutine(updateJetpackFuelText);
+		End;
+		If(Event Player.jetpackFuel > 2);
+			Event Player.jetpackFuel = 2;
+			Call Subroutine(updateJetpackFuelText);
+		End;
+	}
+}
+
+rule("Primary Ability 2 (Jetpack) Subroutine: updateJetpackFuelText")
+{
+	event
+	{
+		Subroutine;
+		updateJetpackFuelText;
+	}
+
+	actions
+	{
+		If(Event Player.loadoutIDs[1] == 2);
+			Event Player.loadoutNames[1] = Custom String("Jetpack [{0}]", Round To Integer(Event Player.jetpackFuel * 50, Up));
+		End;
+	}
+}
+
+rule("Primary Ability 3 (Air Dash) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[1] == 3;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames[1] = Custom String("Air Dash");
+	}
+}
+
+rule("Primary Ability 3 (Air Dash) Use")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Event Player.loadoutIDs[1] == 3;
+		Is In Air(Event Player) == True;
+		Is Alive(Event Player) == True;
+		Player Carrying Flag(Opposite Team Of(Team Of(Event Player))) != Event Player;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Ring Explosion, Color(White), Position Of(Event Player), 3);
+		If(Throttle Of(Event Player) != Vector(0, 0, 0));
+			Apply Impulse(Event Player, World Vector Of(Throttle Of(Event Player), Event Player, Rotation) + Up, 15, To World,
+				Cancel Contrary Motion XYZ);
+		Else;
+			Apply Impulse(Event Player, World Vector Of(Forward, Event Player, Rotation) + Up, 15, To World, Cancel Contrary Motion XYZ);
+		End;
+		Wait Until(Is On Ground(Event Player), 99999);
+		Wait(2, Ignore Condition);
+		If(Player Carrying Flag(All Teams) != Event Player);
+			Small Message(Event Player, Custom String("Air Dash Ready"));
+		End;
+	}
+}
+
+rule("Primary Ability 4 (Hand Grenade) Init")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Event Player.loadoutIDs[1] == 4;
+	}
+
+	actions
+	{
+		Event Player.loadoutNames[1] = Custom String("Hand Grenade");
+	}
+}
+
+rule("Primary Ability 4 (Hand Grenade) Use")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Event Player.loadoutIDs[1] == 4;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Button(Reload));
+		If(Is Reloading(Event Player));
+			Cancel Primary Action(Event Player);
+		End;
+		"temp1 = max spread ratio"
+		Global.singleTickTemp1 = 0.050;
+		"temp2 = [relative left, relative up, relative forwards, random angle, random spread distance] NOTE: random spread distance uses a square root formula to equalize distribution across area rather than distance"
+		Global.singleTickTemp2 = Array(Normalize(Cross Product(Facing Direction Of(Event Player), Down)), Direction From Angles(
+			Horizontal Facing Angle Of(Event Player), Vertical Facing Angle Of(Event Player) + -90), Facing Direction Of(Event Player),
+			Random Real(0, 360), Random Real(0, Global.singleTickTemp1 ^ 2) ^ 0.500);
+		"temp1 = velocity = speed * ( facing direction + (relative left)*(cos(spread angle))*(spread distance) + (relative up)*(sin(spread angle))*(spread distance) )"
+		Global.singleTickTemp1 = 20 * Normalize(Facing Direction Of(Event Player) + Global.singleTickTemp2[0] * Cosine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4] + Global.singleTickTemp2[1] * Sine From Degrees(
+			Global.singleTickTemp2[3]) * Global.singleTickTemp2[4]);
+		"temp2 = new bullet [newpos, oldpos, velocity, gravity, acceleration, piercing, maxdistance, explosioninfo, maxtime, richochetinfo]; explosioninfo = [init rad, duration, growth rate, particle size]"
+		Global.singleTickTemp2 = Array(Eye Position(Event Player), Eye Position(Event Player), Global.singleTickTemp1, -19.620, Vector(0,
+			0, 0), False, 100, Array(1, 0.336, 7.500, 3.500), 1.500, Array(5, 0.600));
+		"add new bullet to bullets array"
+		Modify Player Variable(Event Player, bullets, Append To Array, Array(Global.singleTickTemp2));
+		Allow Button(Event Player, Button(Reload));
+		"firing delay"
+		Wait(3, Ignore Condition);
+		If(Player Carrying Flag(All Teams) != Event Player);
+			Small Message(Event Player, Custom String("Hand Grenade Ready"));
+		End;
+	}
+}

@@ -1,0 +1,1581 @@
+settings
+{
+	main
+	{
+		Description: "[OW Randomizer v1.0.0] By ELIMINATED#1572 --- Mystery Heroes, but even more mysterious! Every time you respawn you get randomized buffs and nerfs (usually proportional in potency, and more buffs than nerfs). Alter your playstyle around your modifiers to succeed!"
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: Yes
+		Map Rotation: After A Game
+		Match Voice Chat: Enabled
+		Max Spectators: 12
+		Return To Lobby: Never
+		Team Balancing: After A Game
+	}
+
+	modes
+	{
+		Assault
+
+		Control
+
+		Escort
+
+		Hybrid
+
+		General
+		{
+			Competitive Rules: On
+			Game Mode Start: Immediately
+			Hero Limit: Off
+			Respawn As Random Hero: On
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: temp
+		1: projSpeedValArray
+		2: projGravValArray
+		3: healValArray
+		4: gravValArray
+		5: eventID
+		6: eventTimer
+		7: cdValArray
+		8: eventText
+
+	player:
+		0: buffCost
+		1: debuffCost
+		2: buffIDsArray
+		3: debuffIDsArray
+		4: buffTextIDsArray
+		5: debuffTextIDsArray
+		6: allowedIDsArray
+		7: stopAddingDebuffs
+		8: temp
+		9: buffRandArray
+		10: debuffRandArray
+		11: temp2
+		12: noReroll
+		13: currentHero
+		14: burnTime
+		15: burnAttacker
+		16: burnTimeOld
+		17: cooldownMod
+		18: forcingHero
+}
+
+subroutines
+{
+	0: assignBuff1
+	1: assignDebuff1
+	2: setAllowedIDs
+	3: clearTexts
+	4: assignBuff2
+	5: assignDebuff2
+	6: assignBuff3
+	7: assignDebuff3
+	8: globalEvent
+}
+
+rule("init global")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(Host Player, Null, Custom String("Server Load Peak: {0}", Server Load Peak), Custom String("Server Load Avg: {0}",
+			Server Load Average), Right, 0, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("init proj speed hero values array")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		"value multiplier of proj speed modifiers for heroes with projectiles"
+		Global.projSpeedValArray = Empty Array;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Ana))] = 0.750;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Ashe))] = 0.333;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Baptiste))] = 0.750;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(D.Va))] = 0.250;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Doomfist))] = 0.250;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Echo))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Genji))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Hanzo))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Junkrat))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Lúcio))] = 0.500;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Mei))] = 0.333;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Mercy))] = 0.500;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Moira))] = 0.500;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Orisa))] = 0.750;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Pharah))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Reinhardt))] = 0.250;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Roadhog))] = 0.500;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Sigma))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Soldier: 76))] = 0.333;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Sombra))] = 0.333;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Symmetra))] = 0.750;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Torbjörn))] = 1;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Zarya))] = 0.250;
+		Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero(Zenyatta))] = 1;
+	}
+}
+
+rule("init proj grav hero values array")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		"value multiplier of proj speed modifiers for heroes with projectiles"
+		Global.projGravValArray = Empty Array;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Ana))] = 0.333;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Ashe))] = 0.333;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Baptiste))] = 0.750;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Hanzo))] = 1;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Junkrat))] = 1;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Orisa))] = 0.333;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Sigma))] = 0.333;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Sombra))] = 0.333;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Torbjörn))] = 1;
+		Global.projGravValArray[Index Of Array Value(All Heroes, Hero(Zarya))] = 0.250;
+	}
+}
+
+rule("init heal hero values array")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		"value multiplier of proj speed modifiers for heroes with projectiles"
+		Global.healValArray = Empty Array;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Ana))] = 1;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Baptiste))] = 1;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Bastion))] = 0.333;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Brigitte))] = 0.800;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Lúcio))] = 0.800;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Mei))] = 0.333;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Mercy))] = 1;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Moira))] = 1;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Reaper))] = 0.333;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Roadhog))] = 0.333;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Soldier: 76))] = 0.500;
+		Global.healValArray[Index Of Array Value(All Heroes, Hero(Zenyatta))] = 0.800;
+	}
+}
+
+rule("init grav hero values array")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		"value multiplier of proj speed modifiers for heroes with projectiles"
+		Global.gravValArray = Empty Array;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Ana))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Ashe))] = 0.150;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Baptiste))] = 0.200;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Bastion))] = 0.125;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Brigitte))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(D.Va))] = 0.125;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Doomfist))] = 0.150;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Echo))] = 0.300;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Genji))] = 0.333;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Hanzo))] = 0.150;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Junkrat))] = 0.150;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Lúcio))] = 0.175;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(McCree))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Mei))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Mercy))] = 0.125;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Moira))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Orisa))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Pharah))] = 0.600;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Reaper))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Reinhardt))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Roadhog))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Sigma))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Soldier: 76))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Sombra))] = 0.125;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Symmetra))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Torbjörn))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Tracer))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Widowmaker))] = 0.150;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Winston))] = 0.200;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Wrecking Ball))] = 0.200;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Zarya))] = 0.100;
+		Global.gravValArray[Index Of Array Value(All Heroes, Hero(Zenyatta))] = 0.100;
+	}
+}
+
+rule("init cooldown values array")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.cdValArray = Empty Array;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Ana))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Ashe))] = 0.500;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Baptiste))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Brigitte))] = 0.500;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(D.Va))] = 0.500;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Doomfist))] = 1;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Echo))] = 0.800;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Genji))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Hanzo))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Junkrat))] = 0.300;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Lúcio))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(McCree))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Mei))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Mercy))] = 0.800;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Moira))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Orisa))] = 0.900;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Pharah))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Reaper))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Reinhardt))] = 0.500;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Roadhog))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Sigma))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Soldier: 76))] = 0.600;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Sombra))] = 0.900;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Symmetra))] = 0.300;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Torbjörn))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Tracer))] = 0.500;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Widowmaker))] = 0.400;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Winston))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Wrecking Ball))] = 0.700;
+		Global.cdValArray[Index Of Array Value(All Heroes, Hero(Zarya))] = 0.900;
+	}
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+}
+
+rule("no reroll on suicid")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	actions
+	{
+		If(Attacker == Victim);
+			Event Player.noReroll = True;
+		Else;
+			Event Player.noReroll = False;
+		End;
+	}
+}
+
+rule("reroll on respawn, control point change, or next round")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.currentHero != Hero Of(Event Player);
+		Event Player.noReroll == False;
+	}
+
+	actions
+	{
+		Event Player.currentHero = Hero Of(Event Player);
+		Event Player.cooldownMod = 100;
+		"reset all modifiers"
+		Set Damage Dealt(Event Player, 100);
+		Set Gravity(Event Player, 100);
+		Set Healing Dealt(Event Player, 100);
+		Set Max Health(Event Player, 100);
+		Set Move Speed(Event Player, 100);
+		Set Projectile Gravity(Event Player, 100);
+		Set Projectile Speed(Event Player, 100);
+		Event Player.buffCost = 0;
+		Event Player.debuffCost = 0;
+		Event Player.buffIDsArray = Empty Array;
+		Event Player.debuffIDsArray = Empty Array;
+		Event Player.allowedIDsArray = Empty Array;
+		Event Player.buffRandArray = Empty Array;
+		Event Player.debuffRandArray = Empty Array;
+		Call Subroutine(clearTexts);
+		"determine which modifiers are allowed for the current hero"
+		Call Subroutine(setAllowedIDs);
+		Event Player.stopAddingDebuffs = False;
+		Event Player.temp2 = 0;
+		"generate random debuffs, no greater than value of 100, no more than 3, must leave at least 2 IDs for random buffs"
+		While(!Event Player.stopAddingDebuffs && Count Of(Event Player.allowedIDsArray) > 2 && Count Of(Event Player.debuffIDsArray)
+			< 3 && Event Player.debuffCost < 100);
+			Event Player.temp2 += 1;
+			If(Event Player.temp2 == 1);
+				Call Subroutine(assignDebuff1);
+			Else If(Event Player.temp2 == 2);
+				Call Subroutine(assignDebuff2);
+			Else If(Event Player.temp2 == 3);
+				Call Subroutine(assignDebuff3);
+			End;
+			"50% chance of stopping after each one"
+			If(Random Integer(0, 1) == 1);
+				Event Player.stopAddingDebuffs = True;
+			End;
+		End;
+		Event Player.temp2 = 0;
+		"generate buffs until the price is equal to or greater than the debuffs, or 3 buffs are reached, or all allowed IDs are used"
+		While(Event Player.allowedIDsArray != Empty Array && Event Player.buffCost < Event Player.debuffCost && Count Of(
+			Event Player.buffIDsArray) < 3);
+			Event Player.temp2 += 1;
+			If(Event Player.temp2 == 1);
+				Call Subroutine(assignBuff1);
+			Else If(Event Player.temp2 == 2);
+				Call Subroutine(assignBuff2);
+			Else If(Event Player.temp2 == 3);
+				Call Subroutine(assignBuff3);
+			End;
+		End;
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("setAllowedIDs subroutine")
+{
+	event
+	{
+		Subroutine;
+		setAllowedIDs;
+	}
+
+	actions
+	{
+		Event Player.allowedIDsArray = Empty Array;
+		"1 = Dmg, 2 = Grav, 3 = Heal, 4 = HP, 5 = Speed, 6 = Proj Grav, 7 = Proj Speed, 8 = Cooldown Rate"
+		For Player Variable(Event Player, stopAddingDebuffs, 1, 9, 1);
+			Modify Player Variable(Event Player, allowedIDsArray, Append To Array, Event Player.stopAddingDebuffs);
+		End;
+		"no rolling proj speed mod for heroes with no coefficient in projSpeedValArray"
+		If(Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] == 0);
+			Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, 7);
+		End;
+		"no rolling proj grav mod for heroes with no coefficient in projGravValArray"
+		If(Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] == 0);
+			Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, 6);
+		End;
+		"no rolling healing mod for heroes with no coefficient in healValArray"
+		If(Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] == 0);
+			Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, 3);
+		End;
+		"no rolling cooldown mod for heroes with no coefficient in cdValArray"
+		If(Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] == 0);
+			Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, 8);
+		End;
+	}
+}
+
+rule("clearTexts subroutine")
+{
+	event
+	{
+		Subroutine;
+		clearTexts;
+	}
+
+	actions
+	{
+		For Global Variable(temp, 0, Count Of(Event Player.buffTextIDsArray), 1);
+			Destroy HUD Text(Event Player.buffTextIDsArray[Global.temp]);
+		End;
+		For Global Variable(temp, 0, Count Of(Event Player.debuffTextIDsArray), 1);
+			Destroy HUD Text(Event Player.debuffTextIDsArray[Global.temp]);
+		End;
+	}
+}
+
+rule("assignDebuff1 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignDebuff1;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(
+			Event Player.allowedIDsArray, Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"less damage"
+		If(Event Player.temp == 1);
+			Event Player.debuffIDsArray[0] = 1;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Damage Dealt(Event Player, Event Player.debuffRandArray[0]);
+			"half price for Mercy, who doesn't deal much dmg"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.debuffCost += 50 * (100 / Event Player.debuffRandArray[0] - 1);
+			Else;
+				Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[0] - 1);
+			End;
+			Create HUD Text(Event Player, Custom String("-{0}% damage", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"more gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.debuffIDsArray[0] = 2;
+			Event Player.debuffRandArray[0] = Random Integer(20, 100);
+			Set Gravity(Event Player, 100 + Event Player.debuffRandArray[0]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.debuffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.debuffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% gravity", Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"less healing"
+		Else If(Event Player.temp == 3);
+			Event Player.debuffIDsArray[0] = 3;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Healing Dealt(Event Player, Event Player.debuffRandArray[0]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.debuffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% healing", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"less health"
+		Else If(Event Player.temp == 4);
+			Event Player.debuffIDsArray[0] = 4;
+			"between -9% and -43%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 75))), To Nearest);
+			Set Max Health(Event Player, Event Player.debuffRandArray[0]);
+			Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% health", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"less speed"
+		Else If(Event Player.temp == 5);
+			Event Player.debuffIDsArray[0] = 5;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Move Speed(Event Player, Event Player.debuffRandArray[0]);
+			Event Player.debuffCost += 0.750 * 100 * (100 / Event Player.debuffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% speed", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"more proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.debuffIDsArray[0] = 6;
+			Event Player.debuffRandArray[0] = Random Integer(10, 100);
+			Set Projectile Gravity(Event Player, 100 + Event Player.debuffRandArray[0]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.debuffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.debuffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% proj gravity", Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"less proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.debuffIDsArray[0] = 7;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Projectile Speed(Event Player, Event Player.debuffRandArray[0]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.debuffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.debuffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj speed", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		"less cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.debuffIDsArray[0] = 8;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Event Player.cooldownMod = Event Player.debuffRandArray[0];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.debuffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% cooldown rate", 100 - Event Player.debuffRandArray[0]), Null, Null, Left, 0,
+				Color(Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[0] = Last Text ID;
+		End;
+	}
+}
+
+rule("assignDebuff2 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignDebuff2;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(
+			Event Player.allowedIDsArray, Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"less damage"
+		If(Event Player.temp == 1);
+			Event Player.debuffIDsArray[1] = 1;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Damage Dealt(Event Player, Event Player.debuffRandArray[1]);
+			"dmg doesn't matter much for Mercy so price of damage mods is halved for her"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.debuffCost += 50 * (100 / Event Player.debuffRandArray[1] - 1);
+			Else;
+				Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[1] - 1);
+			End;
+			Create HUD Text(Event Player, Custom String("-{0}% damage", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"more gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.debuffIDsArray[1] = 2;
+			Event Player.debuffRandArray[1] = Random Integer(20, 100);
+			Set Gravity(Event Player, 100 + Event Player.debuffRandArray[1]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.debuffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.debuffRandArray[1];
+			Create HUD Text(Event Player, Custom String("+{0}% gravity", Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"less healing"
+		Else If(Event Player.temp == 3);
+			Event Player.debuffIDsArray[1] = 3;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Healing Dealt(Event Player, Event Player.debuffRandArray[1]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.debuffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% healing", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"less health"
+		Else If(Event Player.temp == 4);
+			Event Player.debuffIDsArray[1] = 4;
+			"between -9% and -43%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 75))), To Nearest);
+			Set Max Health(Event Player, Event Player.debuffRandArray[1]);
+			Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% health", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"less speed"
+		Else If(Event Player.temp == 5);
+			Event Player.debuffIDsArray[1] = 5;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Move Speed(Event Player, Event Player.debuffRandArray[1]);
+			Event Player.debuffCost += 0.750 * 100 * (100 / Event Player.debuffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% speed", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"more proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.debuffIDsArray[1] = 6;
+			Event Player.debuffRandArray[1] = Random Integer(10, 100);
+			Set Projectile Gravity(Event Player, 100 + Event Player.debuffRandArray[1]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.debuffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.debuffRandArray[1];
+			Create HUD Text(Event Player, Custom String("+{0}% proj gravity", Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"less proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.debuffIDsArray[1] = 7;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Projectile Speed(Event Player, Event Player.debuffRandArray[1]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.debuffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.debuffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj speed", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		"less cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.debuffIDsArray[1] = 8;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Event Player.cooldownMod = Event Player.debuffRandArray[1];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.debuffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% cooldown rate", 100 - Event Player.debuffRandArray[1]), Null, Null, Left, 0,
+				Color(Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[1] = Last Text ID;
+		End;
+	}
+}
+
+rule("assignDebuff3 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignDebuff3;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(
+			Event Player.allowedIDsArray, Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"less damage"
+		If(Event Player.temp == 1);
+			Event Player.debuffIDsArray[2] = 1;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Damage Dealt(Event Player, Event Player.debuffRandArray[2]);
+			"dmg doesn't matter much for Mercy so price of damage mods is halved for her"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.debuffCost += 50 * (100 / Event Player.debuffRandArray[2] - 1);
+			Else;
+				Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[2] - 1);
+			End;
+			Create HUD Text(Event Player, Custom String("-{0}% damage", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"more gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.debuffIDsArray[2] = 2;
+			Event Player.debuffRandArray[2] = Random Integer(20, 100);
+			Set Gravity(Event Player, 100 + Event Player.debuffRandArray[2]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.debuffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.debuffRandArray[2];
+			Create HUD Text(Event Player, Custom String("+{0}% gravity", Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"less healing"
+		Else If(Event Player.temp == 3);
+			Event Player.debuffIDsArray[2] = 3;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Healing Dealt(Event Player, Event Player.debuffRandArray[2]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.debuffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% healing", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"less health"
+		Else If(Event Player.temp == 4);
+			Event Player.debuffIDsArray[2] = 4;
+			"between -9% and -43%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 75))), To Nearest);
+			Set Max Health(Event Player, Event Player.debuffRandArray[2]);
+			Event Player.debuffCost += 100 * (100 / Event Player.debuffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% health", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"less speed"
+		Else If(Event Player.temp == 5);
+			Event Player.debuffIDsArray[2] = 5;
+			"between -9% and -33%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 50))), To Nearest);
+			Set Move Speed(Event Player, Event Player.debuffRandArray[2]);
+			Event Player.debuffCost += 0.750 * 100 * (100 / Event Player.debuffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% speed", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(Red),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"more proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.debuffIDsArray[2] = 6;
+			Event Player.debuffRandArray[2] = Random Integer(10, 100);
+			Set Projectile Gravity(Event Player, 100 + Event Player.debuffRandArray[2]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.debuffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.debuffRandArray[2];
+			Create HUD Text(Event Player, Custom String("+{0}% proj gravity", Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"less proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.debuffIDsArray[2] = 7;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Set Projectile Speed(Event Player, Event Player.debuffRandArray[2]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.debuffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.debuffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj speed", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0, Color(
+				Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		"less cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.debuffIDsArray[2] = 8;
+			"between -9% and -50%"
+			Event Player.debuffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(10, 100))), To Nearest);
+			Event Player.cooldownMod = Event Player.debuffRandArray[2];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.debuffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.debuffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% cooldown rate", 100 - Event Player.debuffRandArray[2]), Null, Null, Left, 0,
+				Color(Red), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.debuffTextIDsArray[2] = Last Text ID;
+		End;
+	}
+}
+
+rule("assignBuff1 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignBuff1;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.buffIDsArray, Current Array Element == Event Player.temp) || Is True For Any(
+			Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(Event Player.allowedIDsArray,
+			Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"more damage"
+		If(Event Player.temp == 1);
+			Event Player.buffIDsArray[0] = 1;
+			"between +10% and +75%"
+			Event Player.buffRandArray[0] = Random Integer(10, 75);
+			Set Damage Dealt(Event Player, 100 + Event Player.buffRandArray[0]);
+			"dmg doesn't matter much for Mercy so price of damage mods is halved for her"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.buffCost += 0.500 * Event Player.buffRandArray[0];
+			Else;
+				Event Player.buffCost += Event Player.buffRandArray[0];
+			End;
+			Create HUD Text(Event Player, Custom String("+{0}% damage", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"less gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.buffIDsArray[0] = 2;
+			Event Player.buffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Gravity(Event Player, Event Player.buffRandArray[0]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.buffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.buffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% gravity", 100 - Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"more healing"
+		Else If(Event Player.temp == 3);
+			Event Player.buffIDsArray[0] = 3;
+			"between +10% and +100%"
+			Event Player.buffRandArray[0] = Random Integer(10, 100);
+			Set Healing Dealt(Event Player, 100 + Event Player.buffRandArray[0]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.buffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% healing", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"more health"
+		Else If(Event Player.temp == 4);
+			Event Player.buffIDsArray[0] = 4;
+			"between +10% and +75%"
+			Event Player.buffRandArray[0] = Random Integer(10, 75);
+			Set Max Health(Event Player, 100 + Event Player.buffRandArray[0]);
+			Event Player.buffCost += Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% health", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"more speed"
+		Else If(Event Player.temp == 5);
+			Event Player.buffIDsArray[0] = 5;
+			"between +10% and +75%"
+			Event Player.buffRandArray[0] = Random Integer(10, 75);
+			Set Move Speed(Event Player, 100 + Event Player.buffRandArray[0]);
+			Event Player.buffCost += 0.750 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% speed", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"less proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.buffIDsArray[0] = 6;
+			Event Player.buffRandArray[0] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Projectile Gravity(Event Player, Event Player.buffRandArray[0]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.buffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.buffRandArray[0] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj gravity", 100 - Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"more proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.buffIDsArray[0] = 7;
+			"between +10% and +100%"
+			Event Player.buffRandArray[0] = Random Integer(10, 100);
+			Set Projectile Speed(Event Player, 100 + Event Player.buffRandArray[0]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.buffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% proj speed", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		"more cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.buffIDsArray[0] = 8;
+			"between +10% and +100%"
+			Event Player.buffRandArray[0] = Random Integer(10, 100);
+			Event Player.cooldownMod = 100 + Event Player.buffRandArray[0];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.buffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% cooldown rate", Event Player.buffRandArray[0]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[0] = Last Text ID;
+		End;
+	}
+}
+
+rule("assignBuff2 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignBuff2;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.buffIDsArray, Current Array Element == Event Player.temp) || Is True For Any(
+			Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(Event Player.allowedIDsArray,
+			Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"more damage"
+		If(Event Player.temp == 1);
+			Event Player.buffIDsArray[1] = 1;
+			"between +10% and +75%"
+			Event Player.buffRandArray[1] = Random Integer(10, 75);
+			Set Damage Dealt(Event Player, 100 + Event Player.buffRandArray[1]);
+			"dmg doesn't matter much for Mercy so price of damage mods is halved for her"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.buffCost += 0.500 * Event Player.buffRandArray[1];
+			Else;
+				Event Player.buffCost += Event Player.buffRandArray[1];
+			End;
+			Create HUD Text(Event Player, Custom String("+{0}% damage", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"less gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.buffIDsArray[1] = 2;
+			Event Player.buffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Gravity(Event Player, Event Player.buffRandArray[1]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.buffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.buffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% gravity", 100 - Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"more healing"
+		Else If(Event Player.temp == 3);
+			Event Player.buffIDsArray[1] = 3;
+			"between +10% and +100%"
+			Event Player.buffRandArray[1] = Random Integer(10, 100);
+			Set Healing Dealt(Event Player, 100 + Event Player.buffRandArray[1]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.buffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[1];
+			Create HUD Text(Event Player, Custom String("+{0}% healing", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"more health"
+		Else If(Event Player.temp == 4);
+			Event Player.buffIDsArray[1] = 4;
+			"between +10% and +75%"
+			Event Player.buffRandArray[1] = Random Integer(10, 75);
+			Set Max Health(Event Player, 100 + Event Player.buffRandArray[1]);
+			Event Player.buffCost += Event Player.buffRandArray[1];
+			Create HUD Text(Event Player, Custom String("+{0}% health", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"more speed"
+		Else If(Event Player.temp == 5);
+			Event Player.buffIDsArray[1] = 5;
+			"between +10% and +75%"
+			Event Player.buffRandArray[1] = Random Integer(10, 75);
+			Set Move Speed(Event Player, 100 + Event Player.buffRandArray[1]);
+			Event Player.buffCost += 0.750 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% speed", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"less proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.buffIDsArray[1] = 6;
+			Event Player.buffRandArray[1] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Projectile Gravity(Event Player, Event Player.buffRandArray[1]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.buffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.buffRandArray[1] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj gravity", 100 - Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"more proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.buffIDsArray[1] = 7;
+			"between -9% and -50%"
+			Event Player.buffRandArray[1] = Random Integer(10, 100);
+			Set Projectile Speed(Event Player, 100 + Event Player.buffRandArray[1]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.buffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% proj speed", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		"more cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.buffIDsArray[1] = 8;
+			"between +10% and +100%"
+			Event Player.buffRandArray[1] = Random Integer(10, 100);
+			Event Player.cooldownMod = 100 + Event Player.buffRandArray[1];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.buffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[1];
+			Create HUD Text(Event Player, Custom String("+{0}% cooldown rate", Event Player.buffRandArray[1]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[1] = Last Text ID;
+		End;
+	}
+}
+
+rule("assignBuff3 subroutine")
+{
+	event
+	{
+		Subroutine;
+		assignBuff3;
+	}
+
+	actions
+	{
+		"reset temp"
+		Event Player.temp = 0;
+		"keep giving a random ID until it is both in the allowed values array and not in the already assigned debuffs array"
+		While(Is True For Any(Event Player.buffIDsArray, Current Array Element == Event Player.temp) || Is True For Any(
+			Event Player.debuffIDsArray, Current Array Element == Event Player.temp) || !Is True For Any(Event Player.allowedIDsArray,
+			Current Array Element == Event Player.temp));
+			Event Player.temp = Random Integer(1, 8);
+		End;
+		"remove current ID from allowed IDs array"
+		Modify Player Variable(Event Player, allowedIDsArray, Remove From Array By Value, Event Player.temp);
+		"more damage"
+		If(Event Player.temp == 1);
+			Event Player.buffIDsArray[2] = 1;
+			"between +10% and +75%"
+			Event Player.buffRandArray[2] = Random Integer(10, 75);
+			Set Damage Dealt(Event Player, 100 + Event Player.buffRandArray[2]);
+			"dmg doesn't matter much for Mercy so price of damage mods is halved for her"
+			If(Hero Of(Event Player) == Hero(Mercy));
+				Event Player.buffCost += 0.500 * Event Player.buffRandArray[2];
+			Else;
+				Event Player.buffCost += Event Player.buffRandArray[2];
+			End;
+			Create HUD Text(Event Player, Custom String("+{0}% damage", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"less gravity"
+		Else If(Event Player.temp == 2);
+			Event Player.buffIDsArray[2] = 2;
+			Event Player.buffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Gravity(Event Player, Event Player.buffRandArray[2]);
+			"multiply price of grav modifier by significance coefficient in gravValArray"
+			Event Player.buffCost += Global.gravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 100 * (
+				100 / Event Player.buffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% gravity", 100 - Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"more healing"
+		Else If(Event Player.temp == 3);
+			Event Player.buffIDsArray[2] = 3;
+			"between +10% and +100%"
+			Event Player.buffRandArray[2] = Random Integer(10, 100);
+			Set Healing Dealt(Event Player, 100 + Event Player.buffRandArray[2]);
+			"multiply price of healing modifier by significance coefficient in healValArray"
+			Event Player.buffCost += Global.healValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[2];
+			Create HUD Text(Event Player, Custom String("+{0}% healing", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"more health"
+		Else If(Event Player.temp == 4);
+			Event Player.buffIDsArray[2] = 4;
+			"between +10% and +75%"
+			Event Player.buffRandArray[2] = Random Integer(10, 75);
+			Set Max Health(Event Player, 100 + Event Player.buffRandArray[2]);
+			Event Player.buffCost += Event Player.buffRandArray[2];
+			Create HUD Text(Event Player, Custom String("+{0}% health", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"more speed"
+		Else If(Event Player.temp == 5);
+			Event Player.buffIDsArray[2] = 5;
+			"between +10% and +75%"
+			Event Player.buffRandArray[2] = Random Integer(10, 75);
+			Set Move Speed(Event Player, 100 + Event Player.buffRandArray[2]);
+			Event Player.buffCost += 0.750 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% speed", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"less proj gravity"
+		Else If(Event Player.temp == 6);
+			Event Player.buffIDsArray[2] = 6;
+			Event Player.buffRandArray[2] = Round To Integer(100 * (100 / (100 + Random Integer(20, 200))), To Nearest);
+			Set Projectile Gravity(Event Player, Event Player.buffRandArray[2]);
+			"multiply price of proj grav modifier by significance coefficient in projGravValArray"
+			Event Player.buffCost += Global.projGravValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))] * 0.500 * 100 * (
+				100 / Event Player.buffRandArray[2] - 1);
+			Create HUD Text(Event Player, Custom String("-{0}% proj gravity", 100 - Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"more proj speed"
+		Else If(Event Player.temp == 7);
+			Event Player.buffIDsArray[2] = 7;
+			"between -9% and -50%"
+			Event Player.buffRandArray[2] = Random Integer(10, 100);
+			Set Projectile Speed(Event Player, 100 + Event Player.buffRandArray[2]);
+			"multiply price of proj speed modifier by significance coefficient in projSpeedValArray"
+			Event Player.buffCost += Global.projSpeedValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * 0.500 * Event Player.buffRandArray[0];
+			Create HUD Text(Event Player, Custom String("+{0}% proj speed", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(Green),
+				Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		"more cooldown rate"
+		Else If(Event Player.temp == 8);
+			Event Player.buffIDsArray[2] = 8;
+			"between +10% and +100%"
+			Event Player.buffRandArray[2] = Random Integer(10, 100);
+			Event Player.cooldownMod = 100 + Event Player.buffRandArray[2];
+			"multiply price of cooldown modifier by significance coefficient in cdValArray"
+			Event Player.buffCost += Global.cdValArray[Index Of Array Value(All Heroes, Hero Of(Event Player))
+				] * Event Player.buffRandArray[2];
+			Create HUD Text(Event Player, Custom String("+{0}% cooldown rate", Event Player.buffRandArray[2]), Null, Null, Left, 0, Color(
+				Green), Color(White), Color(White), Visible To and String, Default Visibility);
+			Event Player.buffTextIDsArray[2] = Last Text ID;
+		End;
+	}
+}
+
+rule("random global events")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.eventID == 0;
+	}
+
+	actions
+	{
+		Wait(Random Integer(60, 480), Abort When False);
+		Call Subroutine(globalEvent);
+	}
+}
+
+rule("globalEvent subroutine")
+{
+	event
+	{
+		Subroutine;
+		globalEvent;
+	}
+
+	actions
+	{
+		Global.eventID = Random Integer(1, 8);
+		"invis flash"
+		If(Global.eventID == 1);
+			Create HUD Text(All Players(All Teams), Custom String("Ghost Mode"), Null, Null, Top, 0, Color(White), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone is a ghost! {0}", Icon String(Eye)));
+			For Global Variable(eventTimer, 0, 20, 2);
+				Set Invisible(All Players(All Teams), All);
+				Wait(1, Ignore Condition);
+				Set Invisible(All Players(All Teams), None);
+				Wait(1, Ignore Condition);
+			End;
+		"burn attacks"
+		Else If(Global.eventID == 2);
+			Create HUD Text(All Players(All Teams), Custom String("Shoot Fire"), Null, Null, Top, 0, Color(Red), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone shoots fire! {0}", Icon String(Fire)));
+			Wait(30, Ignore Condition);
+		"emp"
+		Else If(Global.eventID == 3);
+			Create HUD Text(All Players(All Teams), Custom String("Hacked"), Null, Null, Top, 0, Color(Purple), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone is hacked! {0}", Hero Icon String(Hero(Sombra))));
+			Set Status(All Players(All Teams), Null, Hacked, 6);
+			Wait(6, Ignore Condition);
+		"freeze"
+		Else If(Global.eventID == 4);
+			Create HUD Text(All Players(All Teams), Custom String("Frozen"), Null, Null, Top, 0, Color(Sky Blue), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone is frozen! {0}", Hero Icon String(Hero(Mei))));
+			Set Status(All Players(All Teams), Null, Frozen, 5);
+			Wait(5, Ignore Condition);
+		"immortal"
+		Else If(Global.eventID == 5);
+			Create HUD Text(All Players(All Teams), Custom String("Immortal"), Null, Null, Top, 0, Color(Yellow), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone is immortal! {0}", Hero Icon String(Hero(Baptiste))));
+			Set Status(All Players(All Teams), Null, Unkillable, 10);
+			Wait(10, Ignore Condition);
+		"earthquake"
+		Else If(Global.eventID == 6);
+			Create HUD Text(All Players(All Teams), Custom String("Earthquake"), Null, Null, Top, 0, Color(Orange), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Big Message(All Players(All Teams), Custom String("{0} Earthquake! {0}", Icon String(Warning)));
+			Wait(20, Ignore Condition);
+		"reroll"
+		Else If(Global.eventID == 7);
+			Create HUD Text(All Players(All Teams), Custom String("Clone Wars"), Null, Null, Top, 0, Color(Green), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Start Forcing Player To Be Hero(All Living Players(All Teams), Random Value In Array(All Heroes));
+			All Living Players(All Teams).forcingHero = True;
+			Big Message(All Players(All Teams), Custom String("{0} Everyone is the same hero! {0}", Icon String(Dizzy)));
+			Wait(3, Ignore Condition);
+		"instant ults"
+		Else If(Global.eventID == 8);
+			Create HUD Text(All Players(All Teams), Custom String("Instant Ult"), Null, Null, Top, 0, Color(Aqua), Color(White), Color(White),
+				Visible To and String, Default Visibility);
+			Global.eventText = Last Text ID;
+			Set Ultimate Charge(All Players(All Teams), 100);
+			Big Message(All Players(All Teams), Custom String("{0} Instant Ults! {0}", Icon String(Bolt)));
+			Wait(3, Ignore Condition);
+		End;
+		Global.eventID = 0;
+		Destroy HUD Text(Global.eventText);
+	}
+}
+
+rule("respawn stop forcing hero")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Stop Forcing Player To Be Hero(Event Player);
+	}
+}
+
+rule("round switch bugfix")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Between Rounds == True;
+	}
+
+	actions
+	{
+		Stop Forcing Player To Be Hero(All Players(All Teams));
+		Global.eventID = 0;
+	}
+}
+
+rule("earthquake event")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.eventID == 6;
+	}
+
+	actions
+	{
+		Apply Impulse(Filtered Array(All Players(All Teams), Is On Ground(Current Array Element)), Up, 7, To World,
+			Incorporate Contrary Motion);
+		For Global Variable(temp, 0, 11, 1);
+			Play Effect(Players In Slot(Global.temp, All Teams), Explosion Sound, Color(White), Players In Slot(Global.temp, All Teams), 50);
+		End;
+		Wait(1.250, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("burn attacks event")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.eventID == 2;
+		Event Damage > 4;
+		Attacker != Null;
+	}
+
+	actions
+	{
+		Event Player.burnTime += Event Damage * 0.500 / 20;
+		Event Player.burnAttacker = Attacker;
+	}
+}
+
+rule("burn time")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.burnTime > 0;
+	}
+
+	actions
+	{
+		Start Damage Over Time(Event Player, Event Player.burnAttacker, Event Player.burnTime, 20);
+		Set Status(Event Player, Event Player.burnAttacker, Burning, Event Player.burnTime);
+		Event Player.burnTimeOld = Event Player.burnTime;
+		Wait(Event Player.burnTime, Ignore Condition);
+		Event Player.burnTime -= Event Player.burnTimeOld;
+		Loop If Condition Is True;
+	}
+}
+
+rule("burn time zero on death")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Dead(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.burnTime = 0;
+	}
+}
+
+rule("cooldown mod primary")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Primary Fire)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Primary Fire), Ability Cooldown(Event Player, Button(Primary Fire)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod secondary")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Secondary Fire)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Secondary Fire), Ability Cooldown(Event Player, Button(Secondary Fire)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod ability1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 1)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Ability 1), Ability Cooldown(Event Player, Button(Ability 1)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod ability2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 2)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Ability 2), Ability Cooldown(Event Player, Button(Ability 2)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod interact")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Interact)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Interact), Ability Cooldown(Event Player, Button(Interact)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod jump")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Jump)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Jump), Ability Cooldown(Event Player, Button(Jump)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod crouch")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Crouch)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Crouch), Ability Cooldown(Event Player, Button(Crouch)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod melee")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Melee)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Melee), Ability Cooldown(Event Player, Button(Melee)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("cooldown mod reload")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Reload)) != 0;
+		Event Player.cooldownMod != 100;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Reload), Ability Cooldown(Event Player, Button(Reload)) - 0.100 * ((
+			Event Player.cooldownMod - 100) / 100));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}

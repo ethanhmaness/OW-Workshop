@@ -1,0 +1,517 @@
+settings
+{
+	main
+	{
+		Description: "[Echo Aerial Sumo v4.2.0] By ELIMINATED#1572 u/TheRedstoneBlaze --- Shoot enemies to knock then back. The sphere shrinks over time. Knock all enemies out of the sphere to win the round. {Code 16D67}"
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: Yes
+		Map Rotation: After A Game
+		Max Spectators: 12
+		Return To Lobby: Never
+	}
+
+	modes
+	{
+		Deathmatch
+		{
+			enabled maps
+			{
+				Workshop Island
+			}
+		}
+
+		General
+		{
+			Game Length In Minutes: 15
+			Game Mode Start: Immediately
+			Hero Limit: Off
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Echo
+			{
+				Ultimate Generation - Combat Duplicate: 0%
+				Ultimate Generation - Passive Duplicate: 0%
+			}
+
+			enabled heroes
+			{
+				Echo
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: MAX_RAD
+		1: MIN_RAD
+		2: SHRINK_TIME
+		3: rad
+		4: KNOCKBACK_RATIO
+		5: winner
+		6: MAX_REGEN
+		7: KILL_ULT
+		8: WIN_ULT
+		9: ULT_BLAST_RAD
+		10: WATERMARK
+		11: CENTER_POS
+		12: ULT_EXEMPT_HEROES
+
+	player:
+		0: attacker
+		1: ultHero
+		2: regenID
+		3: ultCharge
+}
+
+subroutines
+{
+	0: newRound
+}
+
+disabled rule("test")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player == Host Player;
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		disabled Create Dummy Bot(Hero(Echo), All Teams, 11, Event Player, Facing Direction Of(Event Player));
+		disabled Event Player.ultCharge = 100;
+	}
+}
+
+rule("PARAMETERS")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.MAX_RAD = 45;
+		Global.MIN_RAD = 10;
+		Global.SHRINK_TIME = 60;
+		Global.KNOCKBACK_RATIO = 1.800;
+		Global.MAX_REGEN = 30;
+		Global.KILL_ULT = 5;
+		Global.WIN_ULT = 10;
+		Global.ULT_BLAST_RAD = 20;
+		"set to true if you don't want the credits text"
+		Global.WATERMARK = False;
+	}
+}
+
+rule("skip assembling")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(5);
+		Wait(6, Ignore Condition);
+		Set Match Time(261);
+		Wait(0.900, Ignore Condition);
+		Pause Match Time;
+	}
+}
+
+rule("enable potg music")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Match Complete == True;
+	}
+
+	actions
+	{
+		Enable Built-In Game Mode Music;
+	}
+}
+
+rule("init global")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.CENTER_POS = Vector(0, 0, 0);
+		Create HUD Text(All Players(All Teams), Null, Null, Custom String("Knock all enemies out of the sphere to win"), Left, 1, Color(
+			White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Null, Custom String("Ult selects a random hero", Global.ULT_BLAST_RAD * 2), Left, 2,
+			Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		"host server load text"
+		disabled Create HUD Text(Host Player, Null, Custom String("Load Peak {0}", Server Load Peak), Custom String("Load Avg {0}",
+			Server Load Average), Right, 0, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		"dead text"
+		Create HUD Text(All Dead Players(All Teams), Custom String("Dead"), Custom String("Please wait, a round is currently in progress"),
+			Custom String("You will respawn next round"), Top, 1, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Disable Built-In Game Mode Music;
+		Disable Built-In Game Mode Scoring;
+		Disable Built-In Game Mode Announcer;
+		Global.rad = 60;
+		Create Effect(All Players(All Teams), Sphere, Color(White), Global.CENTER_POS + Up * Global.rad * 0.500, Global.rad,
+			Visible To Position and Radius);
+		Create Effect(Remove From Array(All Living Players(All Teams), Players Within Radius(Global.CENTER_POS + Up * Global.rad * 0.500,
+			Global.rad - 10, All Teams, Off)), Sphere, Color(Red), Global.CENTER_POS + Up * Global.rad * 0.500, Global.rad,
+			Visible To Position and Radius);
+		Create Effect(Remove From Array(All Living Players(All Teams), Players Within Radius(Global.CENTER_POS + Up * Global.rad * 0.500,
+			Global.rad - 5, All Teams, Off)), Sphere, Color(Red), Global.CENTER_POS + Up * Global.rad * 0.500, Global.rad,
+			Visible To Position and Radius);
+		Call Subroutine(newRound);
+		"Please do not remove names from this.  If you added something to the game, you may add yourself to the credits."
+		Create HUD Text(Filtered Array(All Players(All Teams), !Global.WATERMARK), Null, Custom String("Created by ELIMINATED#1572"), Null,
+			Left, 0, Color(White), Color(Turquoise), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Disable Built-In Game Mode Respawning(Event Player);
+		Enable Death Spectate All Players(Event Player);
+		Start Heal Over Time(Event Player, Event Player, 9999, Global.MAX_REGEN);
+		Event Player.regenID = Last Heal Over Time ID;
+	}
+}
+
+rule("newRound subroutine")
+{
+	event
+	{
+		Subroutine;
+		newRound;
+	}
+
+	actions
+	{
+		Global.CENTER_POS = Vector(Random Real(-10, 10), 0, Random Real(-10, 10));
+		All Players(All Teams).attacker = 0;
+		Respawn(All Players(All Teams));
+		Global.rad = Global.MAX_RAD;
+		Chase Global Variable Over Time(rad, Global.MIN_RAD, Global.SHRINK_TIME, Destination and Duration);
+		Set Status(All Players(All Teams), Null, Phased Out, 3);
+		Set Status(All Players(All Teams), Null, Rooted, 3);
+		Set Primary Fire Enabled(All Players(All Teams), False);
+		Set Secondary Fire Enabled(All Players(All Teams), False);
+		Set Ability 2 Enabled(All Players(All Teams), False);
+		Big Message(All Players(All Teams), Custom String("LAST ECHO STANDING"));
+		Small Message(All Players(All Teams), Custom String("3"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("2"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("1"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("FIGHT!"));
+		Set Primary Fire Enabled(All Players(All Teams), True);
+		Set Secondary Fire Enabled(All Players(All Teams), True);
+		Set Ability 2 Enabled(All Players(All Teams), True);
+	}
+}
+
+rule("kill outside radius")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Distance Between(Global.CENTER_POS + Up * Global.rad * 0.500, Event Player) > Global.rad;
+	}
+
+	actions
+	{
+		Damage(Event Player, Event Player.attacker, 10000);
+		Play Effect(All Players(All Teams), Bad Explosion, Color(Red), Event Player, 4);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("kill on spawn if round in progress")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		"at least two players already in round"
+		If(Count Of(Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element))) > 1);
+			"test for not in pre-game countdown"
+			If(Count Of(Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element) && Has Status(Current Array Element,
+				Rooted))) < Count Of(Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element))));
+				Kill(Event Player, Null);
+			End;
+		End;
+	}
+}
+
+rule("end round, winner point/ult")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Count Of(Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element))) <= 1;
+		Count Of(All Dead Players(All Teams)) > 0;
+	}
+
+	actions
+	{
+		If(Count Of(Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element))) == 0);
+			Big Message(All Players(All Teams), Custom String("Draw!"));
+		Else;
+			Global.winner = Filtered Array(All Living Players(All Teams), Has Spawned(Current Array Element));
+			Big Message(All Players(All Teams), Custom String("{0} Wins!", Global.winner));
+			Modify Player Score(Global.winner, 1);
+			Global.winner.ultCharge += Global.WIN_ULT;
+		End;
+		Wait(2, Ignore Condition);
+		Call Subroutine(newRound);
+	}
+}
+
+rule("knockback damage")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker != Victim;
+		Is Alive(Victim) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Bad Explosion, Color(White), Victim, Square Root(Event Damage) * 0.250);
+		Apply Impulse(Victim, Direction Towards(Attacker, Victim), Event Damage * Global.KNOCKBACK_RATIO, To World,
+			Incorporate Contrary Motion);
+		If(Is Using Ability 2(Attacker));
+			Apply Impulse(Victim, Direction Towards(Victim, Eye Position(Attacker) + Facing Direction Of(Attacker) * Distance Between(
+				Eye Position(Attacker), Eye Position(Victim))), Event Damage * Global.KNOCKBACK_RATIO * 0.200, To World,
+				Incorporate Contrary Motion);
+		End;
+		If(Is On Ground(Victim));
+			Apply Impulse(Victim, Up, 2, To World, Incorporate Contrary Motion);
+		End;
+		Victim.attacker = Attacker;
+	}
+}
+
+rule("heal")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Health(Event Player) < Max Health(Event Player);
+	}
+
+	actions
+	{
+		Heal(Event Player, Null, 0.160 * (1 - 0.500 * (Health(Event Player) / Max Health(Event Player))) * Global.MAX_REGEN);
+		Wait(0.160, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("kill for ult")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker != Victim;
+	}
+
+	actions
+	{
+		Attacker.ultCharge += Global.KILL_ULT;
+	}
+}
+
+rule("ult set")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Round To Integer(Event Player.ultCharge, Down) != Round To Integer(Ultimate Charge Percent(Event Player), Down);
+		Event Player.ultHero == 0;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Round To Integer(Event Player.ultCharge, Down));
+		If(Event Player.ultCharge > 100);
+			Event Player.ultCharge = 100;
+		End;
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("use ult")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+		Event Player.ultCharge >= 100;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.ultHero = Random Value In Array(Remove From Array(All Heroes, Global.ULT_EXEMPT_HEROES));
+		Start Forcing Player To Be Hero(Event Player, Event Player.ultHero);
+		Set Ultimate Charge(Event Player, 100);
+		Stop Heal Over Time(Event Player.regenID);
+		Start Heal Over Time(Event Player, Event Player, 9999, Global.MAX_REGEN);
+		Event Player.regenID = Last Heal Over Time ID;
+		Wait(10, Ignore Condition);
+		Event Player.ultCharge = 0;
+		Event Player.ultHero = 0;
+		Disable Built-In Game Mode Respawning(Event Player);
+		Enable Death Spectate All Players(Event Player);
+		Stop Heal Over Time(Event Player.regenID);
+		Start Heal Over Time(Event Player, Event Player, 9999, Global.MAX_REGEN);
+		Event Player.regenID = Last Heal Over Time ID;
+	}
+}
+
+rule("force echo")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Hero Of(Event Player) != Hero(Echo);
+		Event Player.ultHero == 0;
+	}
+
+	actions
+	{
+		Start Forcing Player To Be Hero(Event Player, Hero(Echo));
+	}
+}
+
+rule("ult no select heroes")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.ULT_EXEMPT_HEROES = Empty Array;
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Ashe));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Brigitte));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Echo));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Junkrat));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Lúcio));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Mercy));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Reaper));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Reinhardt));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Tracer));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Wrecking Ball));
+		Modify Global Variable(ULT_EXEMPT_HEROES, Append To Array, Hero(Zarya));
+	}
+}

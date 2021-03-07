@@ -1,0 +1,1854 @@
+settings
+{
+	main
+	{
+		Description: "(RCAHSA Ver. 7.4.0) Reinhardt is now the ultimate lifeform.  Controls are listed on the HUD in spawn.  5 new abilities, Killstreaks, Enhanced Earthshatter, Buffed Barriers, 3rd person mode, Power-Ups, random events, and more --- ELIMINATED#1572 /u/TheRedstoneBlaze"
+	}
+
+	lobby
+	{
+		Match Voice Chat: Enabled
+		Max Spectators: 12
+		Return To Lobby: Never
+		Team Balancing: After A Game
+	}
+
+	modes
+	{
+		Control
+		{
+			Capture Speed Modifier: 500%
+			Score To Win: 1
+			Scoring Speed Modifier: 50%
+
+			disabled maps
+			{
+				Lijiang Tower Lunar New Year
+			}
+		}
+
+		disabled Deathmatch
+		{
+			Score To Win: 50
+		}
+
+		General
+		{
+			Health Pack Respawn Time Scalar: 10%
+			Hero Limit: Off
+			Respawn Time Scalar: 0%
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Brigitte
+			{
+				Barrier Shield Cooldown Time: 0%
+				Barrier Shield Recharge Rate: 500%
+				Damage Dealt: 500%
+				Health: 200%
+				Jump Vertical Speed: 150%
+				Movement Speed: 300%
+				Repair Pack Cooldown Time: 50%
+				Shield Bash Cooldown Time: 28%
+				Shield Bash Knockback Scalar: 300%
+				Ultimate Ability Rally: Off
+				Whip Shot Cooldown Time: 25%
+				Whip Shot Knockback Scalar: 300%
+			}
+
+			Reinhardt
+			{
+				Barrier Field Cooldown Time: 0%
+				Barrier Field Recharge Rate: 500%
+				Charge Cooldown Time: 0%
+				Charge Knockback Scalar: 300%
+				Damage Dealt: 500%
+				Fire Strike Cooldown Time: 50%
+				Healing Dealt: 500%
+				Jump Vertical Speed: 150%
+				Movement Speed: 300%
+				Projectile Speed: 500%
+				Rocket Hammer Knockback Scalar: 400%
+				Ultimate Generation - Combat Earthshatter: 0%
+				Ultimate Generation - Passive Earthshatter: 0%
+			}
+
+			enabled heroes
+			{
+				Reinhardt
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		2: powerupPos
+		8: powerupIcon
+		14: powerupEffectSphere
+		15: powerupEffectPlayer
+		17: EventID
+		18: powerupSphere
+		19: powerupText
+		21: BusanPowerupCoords
+		22: IliosPowerupCoords
+		23: LijangPowerupCoords
+		24: NepalPowerupCoords
+		25: OasisPowerupCoords
+
+	player:
+		0: stunPulseSphere
+		1: shatterPowerIterator
+		2: isStunPulseActive
+		3: oofCoords
+		4: speedPct
+		5: shatterPower
+		6: isSuperCharging
+		7: healthTracker
+		8: isInitialized
+		9: juggernautIcon
+		10: killCount
+		11: shatterPowerVelBonus
+		12: isUsingShatter
+		13: shatterPos
+		14: oofText
+		15: chargeCancelVelocity
+		16: inhibitShatter
+		17: isEventSpeedBuffed
+		18: killSphere
+		19: cameraToggleCounter
+		20: isUltFullPrevTick
+		21: superChargeCD
+		22: hudTextsArray
+		23: superJumpCD
+		24: stunPulseCD
+		25: firestrikeCD
+		26: enemiesInBarrier
+		27: shatterChargingSphere
+		28: shatterChargingSphereRadius
+		29: shatterFXSphere
+		30: shatterFXSphereRadius
+		31: stunPulseRadius
+		32: shatterAttacker
+		33: shatterAttackerDmgRatio
+		34: isChargeMoving
+}
+
+rule("initialize global")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.EventID = 0;
+		Global.BusanPowerupCoords = Empty Array;
+		Global.IliosPowerupCoords = Empty Array;
+		Global.LijangPowerupCoords = Empty Array;
+		Global.NepalPowerupCoords = Empty Array;
+		Global.OasisPowerupCoords = Empty Array;
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(51.900, 15.500, -116.300));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(85, 14, -108.550));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(18.750, 14, -108.550));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(-328.440, 10.810, 118.160));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(-298.670, 11.460, 140.650));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(-358.330, 11.460, 140.650));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(215.250, 18.190, 224.800));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(193.680, 18.090, 224.430));
+		Modify Global Variable(BusanPowerupCoords, Append To Array, Vector(229.810, 18.090, 208.850));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(353.670, -16.850, -49.690));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(297.350, -23.640, -73.950));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(330.960, -23.740, 7.070));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(-200, 2, -8));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(-249.670, 4.100, 6.620));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(-185.350, 4.120, -57.760));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(28.590, 62.400, -147));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(-3.470, 61.370, -157.210));
+		Modify Global Variable(IliosPowerupCoords, Append To Array, Vector(60.760, 61.370, -157.210));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(1, 3, -77.440));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(-33, 0.860, -28));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(35, 0.860, -28));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(0, 95, 178));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(-7.250, 99, 174));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(7.250, 99, 174));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(0, 279, 292));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(-43.500, 268, 300.500));
+		Modify Global Variable(LijangPowerupCoords, Append To Array, Vector(43.500, 268, 300.500));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-174, -87, 0));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-195.250, -97.500, 57.500));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-194.250, -97.500, -58));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-25, 14, 0));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-31, 12, 44));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(-31, 12, -44));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(66.500, 133, 0));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(76, 130.800, 59));
+		Modify Global Variable(NepalPowerupCoords, Append To Array, Vector(76, 130.800, -59));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(113.670, 1.800, 217.670));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(171.770, 3, 219.180));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(115.210, 3, 275.780));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(121.350, 12.500, -227.570));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(87.810, 6.490, -267.610));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(161.370, 6.490, -194.050));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(-206, 20, 0));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(-197, 18, -54));
+		Modify Global Variable(OasisPowerupCoords, Append To Array, Vector(-197, 18, 54));
+	}
+}
+
+rule("init players on spawning")
+{
+	event
+	{
+		Player Joined Match;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Event Player.hudTextsArray = Empty Array;
+		Create HUD Text(Event Player, Event Player.superJumpCD, Custom String("Crouch + Jump"), Custom String("Super Jump"), Right, -97,
+			Color(Yellow), Color(White), Color(White), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Event Player.stunPulseCD, Custom String("Crouch + Barrier"), Custom String("Shield Pulse"), Right,
+			-98, Color(Yellow), Color(White), Color(Sky Blue), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Event Player.firestrikeCD, Custom String("Crouch + F-strike"), Custom String("Slow Strike"), Right,
+			-99, Color(Yellow), Color(White), Color(Orange), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Event Player.superChargeCD, Custom String("Crouch + Charge"), Custom String("Max Thrust"), Right,
+			-100, Color(Yellow), Color(White), Color(Red), Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Event Player.shatterPower + Event Player.shatterPowerVelBonus, Custom String("Crouch + Ult"),
+			Custom String("Charge Shatter Power"), Left, -100, Color(Red), Color(White), Color(Orange), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Event Player, Is In Spawn Room(Event Player)), Null, Null, Custom String(
+			"Shatter Power increases Radius and Damage"), Left, 1, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Event Player, Is In Spawn Room(Event Player)), Null, Null, Custom String(
+			"Interact [F] to Switch Camera"), Right, 1, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Event Player, Is In Spawn Room(Event Player)), Null, Null, Custom String(
+			"Cancel Charge by pressing Ability 1 again"), Right, 1, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, hudTextsArray, Append To Array, Last Text ID);
+		Event Player.isInitialized = True;
+		Event Player.speedPct = 100;
+	}
+}
+
+rule("remove hud texts on leave")
+{
+	event
+	{
+		Player Left Match;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Destroy HUD Text(Event Player.hudTextsArray[0]);
+		Destroy HUD Text(Event Player.hudTextsArray[1]);
+		Destroy HUD Text(Event Player.hudTextsArray[2]);
+		Destroy HUD Text(Event Player.hudTextsArray[3]);
+		Destroy HUD Text(Event Player.hudTextsArray[4]);
+		Destroy HUD Text(Event Player.hudTextsArray[5]);
+		Destroy HUD Text(Event Player.hudTextsArray[6]);
+		Destroy HUD Text(Event Player.hudTextsArray[7]);
+		Destroy HUD Text(Event Player.hudTextsArray[8]);
+		Destroy HUD Text(Event Player.hudTextsArray[9]);
+		Destroy HUD Text(Event Player.hudTextsArray[10]);
+		Destroy HUD Text(Event Player.hudTextsArray[11]);
+	}
+}
+
+rule("every 30 sec EventID = random int 1 - 50; brig time (21), slow mo (39), ghost (42), super speed (12), infinite ults (36)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Skip If(Global.EventID == 39, 1);
+		Wait(29, Ignore Condition);
+		Wait(1, Ignore Condition);
+		Global.EventID = Random Integer(1, 50);
+		Skip If(Global.EventID != 36, 1);
+		Big Message(All Players(All Teams), Custom String("{0} Double Damage! {0}", Hero Icon String(Hero(Reinhardt))));
+		Skip If(Global.EventID != 12, 1);
+		Big Message(All Players(All Teams), Custom String("{0} Time To Accelerate! {0}", Hero Icon String(Hero(Lúcio))));
+		Skip If(Global.EventID != 42, 1);
+		Big Message(All Players(All Teams), Custom String("{0} Ghost Mode! {0}", Hero Icon String(Hero(Sombra))));
+		Skip If(Global.EventID != 21, 1);
+		Big Message(All Players(All Teams), Custom String("{0} Zombrigittes! {0}", Hero Icon String(Hero(Brigitte))));
+		Skip If(Global.EventID != 39, 36);
+		Big Message(All Players(All Teams), Custom String("{0} Bullet Time! {0}", Hero Icon String(Hero(Tracer))));
+		Set Slow Motion(70);
+		Set Aim Speed(All Players(All Teams), 70);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(60);
+		Set Aim Speed(All Players(All Teams), 60);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(50);
+		Set Aim Speed(All Players(All Teams), 50);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(40);
+		Set Aim Speed(All Players(All Teams), 40);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(30);
+		Set Aim Speed(All Players(All Teams), 30);
+		Wait(6, Ignore Condition);
+		Set Slow Motion(40);
+		Set Aim Speed(All Players(All Teams), 40);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(50);
+		Set Aim Speed(All Players(All Teams), 50);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(60);
+		Set Aim Speed(All Players(All Teams), 60);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(70);
+		Set Aim Speed(All Players(All Teams), 70);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(80);
+		Set Aim Speed(All Players(All Teams), 80);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(90);
+		Set Aim Speed(All Players(All Teams), 90);
+		Wait(0.500, Ignore Condition);
+		Set Slow Motion(100);
+		Set Aim Speed(All Players(All Teams), 100);
+		Loop;
+	}
+}
+
+rule("kill sphere visual")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Skip If(Team Of(Event Player) == Team 2, 1);
+		Create Effect(All Players(All Teams), Sphere, Color(Team 1), Event Player, 2, Visible To Position and Radius);
+		Skip If(Team Of(Event Player) == Team 1, 1);
+		Create Effect(All Players(All Teams), Sphere, Color(Team 2), Event Player, 2, Visible To Position and Radius);
+		Event Player.killSphere = Last Created Entity;
+		Wait(0.250, Ignore Condition);
+		Destroy Effect(Event Player.killSphere);
+	}
+}
+
+rule("reset max health on death")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Set Max Health(Event Player, 100);
+	}
+}
+
+rule("ult gen")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 5);
+		Wait(1, Ignore Condition);
+		Loop;
+	}
+}
+
+rule("lifesteal 30%, ult on hit")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Victim != Attacker;
+	}
+
+	actions
+	{
+		Heal(Event Player, Event Player, Event Damage * 0.300);
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + Event Damage / 15);
+	}
+}
+
+rule("on kill: max health + 100, lifesteal 30%, heal 70% of victim's max, 33% ult")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		Reinhardt;
+	}
+
+	actions
+	{
+		Event Player.healthTracker = Health(Event Player);
+		Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Event Player, 3);
+		Set Max Health(Event Player, 20 + Max Health(Event Player) / 5);
+		Event Player.killCount += 1;
+		Wait(0.016, Ignore Condition);
+		Damage(Event Player, Null, Health(Event Player) - 1);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Event Player.healthTracker);
+		Heal(Event Player, Event Player, Event Damage * 0.300);
+		Heal(Event Player, Event Player, Max Health(Victim) * 0.700);
+		Loop If(Event Player.killCount < Number Of Final Blows(Event Player));
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 33);
+	}
+}
+
+rule("charge tracker true")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.600, Abort When False);
+		Event Player.isChargeMoving = True;
+	}
+}
+
+rule("charge tracker false")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == False;
+	}
+
+	actions
+	{
+		Event Player.isChargeMoving = False;
+	}
+}
+
+rule("burning + selfdmg on firestrike")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.500, Ignore Condition);
+		Set Status(Event Player, Null, Burning, 0.300);
+		Start Damage Over Time(Event Player, Event Player, 0.100, Square Root(Max Health(Event Player)) * 75);
+	}
+}
+
+rule("crouch for 50% proj speed")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Projectile Speed(Event Player, 10);
+	}
+}
+
+rule("not crouching 500% proj speed")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == False;
+	}
+
+	actions
+	{
+		Set Projectile Speed(Event Player, 100);
+	}
+}
+
+rule("SLOW FIRESTRIKE CD timer")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(1, Ignore Condition);
+		Event Player.firestrikeCD = 3;
+		Wait(1, Ignore Condition);
+		Event Player.firestrikeCD = 2;
+		Wait(1, Ignore Condition);
+		Event Player.firestrikeCD = 1;
+		Wait(1, Ignore Condition);
+		Event Player.firestrikeCD = 0;
+	}
+}
+
+rule("crouch + RMB to SHIELD BASH PULSE")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == True;
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+		Has Status(Event Player, Stunned) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.isStunPulseActive = True;
+		Play Effect(All Players(All Teams), Good Explosion, Color(White), Event Player, 7);
+		Event Player.stunPulseRadius = 0;
+		Chase Player Variable Over Time(Event Player, stunPulseRadius, 5, 0.150, Destination and Duration);
+		Skip If(Team Of(Event Player) == Team 1, 2);
+		Create Effect(All Players(All Teams), Sphere, Color(Team 2), Event Player, Event Player.stunPulseRadius,
+			Visible To Position and Radius);
+		Event Player.stunPulseSphere = Last Created Entity;
+		Skip If(Team Of(Event Player) == Team 2, 2);
+		Create Effect(All Players(All Teams), Sphere, Color(Team 1), Event Player, Event Player.stunPulseRadius,
+			Visible To Position and Radius);
+		Event Player.stunPulseSphere = Last Created Entity;
+		Set Status(Event Player, Null, Phased Out, 0.300);
+		Set Status(Event Player, Null, Stunned, 0.010);
+		Wait(0.250, Ignore Condition);
+		Chase Player Variable Over Time(Event Player, stunPulseRadius, 0, 0.100, Destination and Duration);
+		Wait(0.100, Ignore Condition);
+		Event Player.isStunPulseActive = False;
+		Destroy Effect(Event Player.stunPulseSphere);
+		Event Player.stunPulseCD = 4;
+		Wait(1, Ignore Condition);
+		Event Player.stunPulseCD = 3;
+		Wait(1, Ignore Condition);
+		Event Player.stunPulseCD = 2;
+		Wait(1, Ignore Condition);
+		Event Player.stunPulseCD = 1;
+		Wait(1, Ignore Condition);
+		Event Player.stunPulseCD = 0;
+	}
+}
+
+rule("SHIELD BASH PULSE effects")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.isStunPulseActive == True;
+	}
+
+	actions
+	{
+		Apply Impulse(Filtered Array(Players Within Radius(Event Player, Event Player.stunPulseRadius, Opposite Team Of(Team Of(
+			Event Player)), Surfaces), Has Status(Current Array Element, Stunned) == False), Direction Towards(
+			Event Player + Facing Direction Of(Event Player), Closest Player To(Event Player, Opposite Team Of(Team Of(Event Player)))),
+			15, To World, Cancel Contrary Motion);
+		Apply Impulse(Filtered Array(Players Within Radius(Event Player, Event Player.stunPulseRadius, Opposite Team Of(Team Of(
+			Event Player)), Surfaces), Has Status(Current Array Element, Stunned) == False), Up, 5, To World, Incorporate Contrary Motion);
+		Set Status(Filtered Array(Players Within Radius(Event Player, Event Player.stunPulseRadius, Opposite Team Of(Team Of(
+			Event Player)), Surfaces), Has Status(Current Array Element, Stunned) == False), Event Player, Stunned, 0.750);
+		Damage(Filtered Array(Players Within Radius(Event Player, Event Player.stunPulseRadius, Opposite Team Of(Team Of(Event Player)),
+			Surfaces), Has Status(Current Array Element, Stunned) == False), Event Player, 10);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("crouch + jump to SUPER JUMP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Crouch)) == True;
+		Is Button Held(Event Player, Button(Jump)) == True;
+		Has Status(Event Player, Stunned) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Ring Explosion, Color(White), Position Of(Event Player), 10);
+		Play Effect(All Players(All Teams), Good Explosion, Color(White), Event Player, 3);
+		Play Effect(All Players(All Teams), Explosion Sound, Color(White), Event Player, 50);
+		Apply Impulse(Event Player, Up, Vertical Speed Of(Event Player) * 0.500 + 22.500, To World, Cancel Contrary Motion);
+		Wait(0.016, Ignore Condition);
+		Event Player.superJumpCD = 6;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 5;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 4;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 3;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 2;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 1;
+		Wait(1, Ignore Condition);
+		Event Player.superJumpCD = 0;
+	}
+}
+
+rule("crouch + shift to POWER CHARGE")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Is Button Held(Event Player, Button(Crouch)) == True;
+		Is Using Ability 1(Event Player) == True;
+		Is Alive(Event Player) == True;
+		Has Status(Event Player, Stunned) == False;
+	}
+
+	actions
+	{
+		Event Player.speedPct *= 5;
+		Set Move Speed(Event Player, Event Player.speedPct);
+		Event Player.isSuperCharging = True;
+		Event Player.superChargeCD = 10;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 9;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 8;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 7;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 6;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 5;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 4;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 3;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 2;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 1;
+		Wait(1, Ignore Condition);
+		Event Player.superChargeCD = 0;
+	}
+}
+
+rule("power charge effect")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Event Player.isSuperCharging == True;
+	}
+
+	actions
+	{
+		Skip If(Event Player.isChargeMoving, 2);
+		Play Effect(All Players(Team Of(Event Player)), Good Pickup Effect, Color(Orange), Eye Position(Event Player), 2);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Good Pickup Effect, Color(Red), Eye Position(Event Player), 2);
+		Skip If(!Event Player.isChargeMoving, 8);
+		Play Effect(All Players(Team Of(Event Player)), Bad Explosion, Color(Orange), Eye Position(Event Player), 2);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Bad Explosion, Color(Red), Eye Position(Event Player), 2);
+		Start Damage Over Time(Filtered Array(Players Within Radius(Eye Position(Event Player), 3, Opposite Team Of(Team Of(Event Player)),
+			Surfaces), Current Array Element != Event Player), Event Player, 0.250, 1000);
+		Set Status(Players Within Radius(Eye Position(Event Player), 3, Opposite Team Of(Team Of(Event Player)), Surfaces), Event Player,
+			Burning, 0.250);
+		Apply Impulse(Filtered Array(Players Within Radius(Event Player, 2, Opposite Team Of(Team Of(Event Player)), Surfaces),
+			Current Array Element != Event Player), Normalize(Velocity Of(Event Player)), Speed Of(Event Player) * 0.250, To World,
+			Incorporate Contrary Motion);
+		Apply Impulse(Filtered Array(Players Within Radius(Event Player, 2, Opposite Team Of(Team Of(Event Player)), Surfaces),
+			Current Array Element != Event Player), Up, 1.500, To World, Incorporate Contrary Motion);
+		Start Damage Over Time(Event Player, Event Player, 0.250, 50);
+		Set Status(Event Player, Event Player, Burning, 0.250);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("stop charging end power charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == False;
+		Event Player.isSuperCharging == True;
+	}
+
+	actions
+	{
+		Event Player.speedPct /= 5;
+		Set Move Speed(Event Player, Event Player.speedPct);
+		Set Status(Event Player, Null, Stunned, 0.010);
+		Start Damage Over Time(Event Player, Event Player, 0.250, 300);
+		Play Effect(All Players(Team Of(Event Player)), Bad Explosion, Color(Orange), Eye Position(Event Player), 5);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Bad Explosion, Color(Red), Eye Position(Event Player), 5);
+		Start Damage Over Time(Filtered Array(Players Within Radius(Eye Position(Event Player), 5, Opposite Team Of(Team Of(Event Player)),
+			Surfaces), Current Array Element != Event Player), Event Player, 0.250, 1000);
+		Set Status(Players Within Radius(Eye Position(Event Player), 5, Opposite Team Of(Team Of(Event Player)), Surfaces), Event Player,
+			Burning, 0.250);
+		Set Status(Players Within Radius(Eye Position(Event Player), 5, Opposite Team Of(Team Of(Event Player)), Surfaces), Event Player,
+			Stunned, 0.050);
+		Apply Impulse(Players Within Radius(Eye Position(Event Player), 5, Opposite Team Of(Team Of(Event Player)), Surfaces),
+			Direction Towards(Eye Position(Event Player), Closest Player To(Eye Position(Event Player), Opposite Team Of(Team Of(
+			Event Player)))), 45, To World, Incorporate Contrary Motion);
+		Apply Impulse(Players Within Radius(Eye Position(Event Player), 5, Opposite Team Of(Team Of(Event Player)), Surfaces), Up, 6,
+			To World, Incorporate Contrary Motion);
+		Event Player.isSuperCharging = False;
+		Wait(0.100, Ignore Condition);
+	}
+}
+
+rule("crouch + ULT to charge SHATTER POWER")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Ultimate)) == True;
+		Is Button Held(Event Player, Button(Crouch)) == True;
+		Event Player.isUltFullPrevTick == True;
+		Has Status(Event Player, Stunned) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("+15 Shatter Power"));
+		Set Status(Event Player, Null, Frozen, 0.400);
+		Set Status(Event Player, Null, Burning, 0.600);
+		Event Player.shatterPower += 15;
+		Set Ultimate Charge(Event Player, 0);
+		Event Player.shatterChargingSphereRadius = 3.500;
+		Create Effect(All Players(All Teams), Sphere, Color(Orange), Event Player, Event Player.shatterChargingSphereRadius,
+			Visible To Position and Radius);
+		Event Player.shatterChargingSphere = Last Created Entity;
+		Chase Player Variable Over Time(Event Player, shatterChargingSphereRadius, 0, 0.400, Destination and Duration);
+		Wait(0.400, Ignore Condition);
+		Destroy Effect(Event Player.shatterChargingSphere);
+	}
+}
+
+rule("set Earthshatter falling speed bonus power")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is In Air(Event Player) == True;
+		Vertical Speed Of(Event Player) < -10;
+		Event Player.shatterPower + Vertical Speed Of(Event Player) * -1 == True;
+	}
+
+	actions
+	{
+		Event Player.shatterPowerVelBonus = Round To Integer(Vertical Speed Of(Event Player) * -1, To Nearest);
+		Wait(0.050, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("on ground falling speed bonus = 0")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is On Ground(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.500, Ignore Condition);
+		Event Player.shatterPowerVelBonus = 0;
+	}
+}
+
+rule("Earthshatter explosion trigger")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is On Ground(Event Player) == True;
+		Hero Of(Event Player) != Hero(Brigitte);
+		Event Player.inhibitShatter == False;
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		Abort If(Event Player.shatterPower + Event Player.shatterPowerVelBonus <= 10);
+		Wait(0.250, Ignore Condition);
+		Event Player.shatterPos = Position Of(Event Player) + Vector(0, 0.500, 0) + Direction From Angles(Horizontal Facing Angle Of(
+			Event Player), 180) * -3;
+		Event Player.isUsingShatter = True;
+		Event Player.shatterPower += Event Player.shatterPowerVelBonus;
+		Event Player.shatterPowerIterator = Event Player.shatterPower;
+	}
+}
+
+rule("Earthshatter explosion damage, knockback, stun")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(All Players(Opposite Team Of(Team Of(Event Player))), Current Array Element.isUsingShatter && Distance Between(
+			Event Player, Current Array Element.shatterPos) <= Current Array Element.shatterPower * 0.500) == True;
+	}
+
+	actions
+	{
+		Event Player.shatterAttacker = Sorted Array(Filtered Array(All Players(Opposite Team Of(Team Of(Event Player))),
+			Current Array Element.isUsingShatter && Distance Between(Current Array Element.shatterPos, Event Player)
+			<= Current Array Element.shatterPower * 0.500), Distance Between(Event Player, Current Array Element.shatterPos))[0];
+		Event Player.shatterAttackerDmgRatio = 0.405 * Arctangent In Radians(0.542, Distance Between(Event Player,
+			Event Player.shatterAttacker.shatterPos) / (0.500 * Event Player.shatterAttacker.shatterPower)) ^ 2;
+		Apply Impulse(Event Player, Direction Towards(Event Player.shatterAttacker.shatterPos, Event Player), Min(
+			Event Player.shatterAttacker.shatterPowerIterator, 10) * Event Player.shatterAttackerDmgRatio * 8, To World,
+			Incorporate Contrary Motion);
+		Apply Impulse(Event Player, Direction Towards(Event Player.shatterAttacker.shatterPos, Event Player), Min(
+			Event Player.shatterAttacker.shatterPowerIterator, 10) * Event Player.shatterAttackerDmgRatio * 0.800, To World,
+			Incorporate Contrary Motion);
+		Skip If(Is In Line of Sight(Event Player, Event Player.shatterAttacker.shatterPos, Barriers Do Not Block LOS), 1);
+		Event Player.shatterAttackerDmgRatio *= 0.125;
+		Damage(Event Player, Event Player.shatterAttacker, Min(Event Player.shatterAttacker.shatterPowerIterator, 10)
+			* 4 * Event Player.shatterAttackerDmgRatio);
+		Skip If(Event Player.shatterAttackerDmgRatio < 0.250 || Is In Line of Sight(Event Player, Event Player.shatterAttacker.shatterPos,
+			All Barriers Block LOS), 1);
+		Set Status(Event Player, Event Player.shatterAttacker, Knocked Down, Event Player.shatterAttackerDmgRatio * 4);
+		Wait(0.020, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Earthshatter explosion iterator and fx")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.isUsingShatter == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Explosion Sound, Color(White), Event Player, Event Player.shatterPower * 1.500);
+		Play Effect(All Players(Team Of(Event Player)), Bad Explosion, Color(Orange), Event Player.shatterPos,
+			Event Player.shatterPower * 0.600);
+		Play Effect(All Players(Team Of(Event Player)), Ring Explosion, Color(Orange), Event Player.shatterPos,
+			Event Player.shatterPower * 0.750);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Bad Explosion, Color(Red), Event Player.shatterPos,
+			Event Player.shatterPower * 0.600);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Ring Explosion, Color(Red), Event Player.shatterPos,
+			Event Player.shatterPower * 0.750);
+		Wait(0.020, Ignore Condition);
+		Event Player.shatterPowerIterator -= 10;
+		Loop If(Event Player.shatterPowerIterator > 0);
+		Event Player.shatterPower = 0;
+		Event Player.isUsingShatter = False;
+		Event Player.shatterPowerIterator = 0;
+		Event Player.shatterFXSphereRadius = 0;
+	}
+}
+
+rule("Earthshatter explosion sphere effect")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.isUsingShatter == True;
+	}
+
+	actions
+	{
+		Create Effect(All Players(All Teams), Sphere, Color(Orange), Event Player.shatterPos, Event Player.shatterFXSphereRadius,
+			Visible To Position and Radius);
+		Event Player.shatterFXSphere = Last Created Entity;
+		Chase Player Variable At Rate(Event Player, shatterFXSphereRadius, Event Player.shatterPower * 0.500, 60, Destination and Rate);
+		Wait(Event Player.shatterPower * 0.500 / 60, Ignore Condition);
+		Destroy Effect(Event Player.shatterFXSphere);
+	}
+}
+
+rule("shield blocks enemies")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Stunned) == False;
+		Is Alive(Event Player) == True;
+		Is Using Ability 1(Event Player) == False;
+		Is Using Ability 2(Event Player) == False;
+		Is Using Ultimate(Event Player) == False;
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.enemiesInBarrier = Filtered Array(Players Within Radius(Event Player, 4, Opposite Team Of(Team Of(Event Player)),
+			Off), (Is In View Angle(Event Player, Current Array Element, 90) && Absolute Value(Y Component Of(Local Vector Of(
+			Event Player - Current Array Element, Event Player, Rotation))) < 3 && Absolute Value(Z Component Of(Local Vector Of(
+			Event Player - Current Array Element, Event Player, Rotation))) < 3.500) == True);
+		Apply Impulse(Event Player.enemiesInBarrier, Facing Direction Of(Event Player), 3.500, To World, Incorporate Contrary Motion);
+		Apply Impulse(Event Player.enemiesInBarrier, Up, 0.700, To World, Incorporate Contrary Motion);
+		Start Damage Over Time(Event Player.enemiesInBarrier, Event Player, 0.100, 60);
+		Set Status(Filtered Array(Event Player.enemiesInBarrier, (Is Using Ability 1(Current Array Element)
+			&& !Event Player.isSuperCharging && Hero Of(Current Array Element) == Hero(Reinhardt)) == True), Event Player, Stunned, 0.100);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Charge again to CANCEL charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Is Button Held(Event Player, Button(Ability 1)) == True;
+		Event Player.isChargeMoving == True;
+	}
+
+	actions
+	{
+		Event Player.chargeCancelVelocity = Velocity Of(Event Player);
+		Set Status(Event Player, Null, Frozen, 0.020);
+		Apply Impulse(Event Player, Event Player.chargeCancelVelocity, 45, To World, Incorporate Contrary Motion);
+		Apply Impulse(Event Player, Up, 4, To World, Incorporate Contrary Motion);
+		Set Ability 1 Enabled(Event Player, False);
+		Wait(1, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, True);
+	}
+}
+
+rule("OOF")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker != Victim;
+	}
+
+	actions
+	{
+		Destroy In-World Text(Event Player.oofText);
+		Event Player.oofCoords = Position Of(Event Player);
+		Create In-World Text(All Players(All Teams), String("Oof"), Event Player.oofCoords, 4, Clip Against Surfaces,
+			Visible To Position and String, Color(White), Default Visibility);
+		Event Player.oofText = Last Text ID;
+		Wait(5, Restart When True);
+		Destroy In-World Text(Event Player.oofText);
+		Event Player.oofCoords = 0;
+	}
+}
+
+rule("POWER-UP spawning")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.powerupEffectPlayer == 0;
+		Is Assembling Heroes == False;
+	}
+
+	actions
+	{
+		Wait(Random Real(60, 120), Abort When False);
+		Abort If Condition Is False;
+		Destroy Effect(Global.powerupSphere);
+		Destroy Icon(Global.powerupIcon);
+		Destroy In-World Text(Global.powerupText);
+		Wait(0.016, Ignore Condition);
+		Global.powerupPos = Nearest Walkable Position(Objective Position(Objective Index));
+		Skip If(Map(Busan) != Current Map, 1);
+		Global.powerupPos = Global.BusanPowerupCoords[Objective Index * 3 + (Control Mode Scoring Team == Team 1 && Number Of Players(
+			Team 1) >= Number Of Players(Team 2)) + 2 * (Control Mode Scoring Team == Team 2 && Number Of Players(Team 2)
+			>= Number Of Players(Team 1))];
+		Skip If(Map(Ilios) != Current Map, 1);
+		Global.powerupPos = Global.IliosPowerupCoords[Objective Index * 3 + (Control Mode Scoring Team == Team 1 && Number Of Players(
+			Team 1) >= Number Of Players(Team 2)) + 2 * (Control Mode Scoring Team == Team 2 && Number Of Players(Team 2)
+			>= Number Of Players(Team 1))];
+		Skip If(Map(Lijiang Tower) != Current Map && Map(Lijiang Tower Lunar New Year) != Current Map, 1);
+		Global.powerupPos = Global.LijangPowerupCoords[Objective Index * 3 + (Control Mode Scoring Team == Team 1 && Number Of Players(
+			Team 1) >= Number Of Players(Team 2)) + 2 * (Control Mode Scoring Team == Team 2 && Number Of Players(Team 2)
+			>= Number Of Players(Team 1))];
+		Skip If(Map(Nepal) != Current Map, 1);
+		Global.powerupPos = Global.NepalPowerupCoords[Objective Index * 3 + (Control Mode Scoring Team == Team 1 && Number Of Players(
+			Team 1) >= Number Of Players(Team 2)) + 2 * (Control Mode Scoring Team == Team 2 && Number Of Players(Team 2)
+			>= Number Of Players(Team 1))];
+		Skip If(Map(Oasis) != Current Map, 1);
+		Global.powerupPos = Global.OasisPowerupCoords[Objective Index * 3 + (Control Mode Scoring Team == Team 1 && Number Of Players(
+			Team 1) >= Number Of Players(Team 2)) + 2 * (Control Mode Scoring Team == Team 2 && Number Of Players(Team 2)
+			>= Number Of Players(Team 1))];
+		Create Icon(All Players(All Teams), Global.powerupPos, Bolt, Visible To and Position, Color(Yellow), True);
+		Global.powerupIcon = Last Created Entity;
+		Create In-World Text(All Players(All Teams), String("Power-up"), Global.powerupPos, 2, Do Not Clip, Visible To Position and String,
+			Color(White), Default Visibility);
+		Global.powerupText = Last Text ID;
+		Create Effect(All Players(All Teams), Sphere, Color(Yellow), Global.powerupPos, 0.500, Visible To Position and Radius);
+		Global.powerupSphere = Last Created Entity;
+		Loop;
+	}
+}
+
+rule("POWER-UP orb effects")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.powerupPos != 0;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Global.powerupPos, 0.500);
+		Play Effect(All Players(All Teams), Ring Explosion, Color(Yellow), Global.powerupPos, 2);
+		Wait(0.200, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("POWER-UP activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Position Of(Event Player) + Up, Global.powerupPos) < 1;
+		Global.powerupPos != 0;
+	}
+
+	actions
+	{
+		Global.powerupPos = 0;
+		Destroy Effect(Global.powerupSphere);
+		Destroy Icon(Global.powerupIcon);
+		Destroy In-World Text(Global.powerupText);
+		Global.powerupEffectPlayer = Event Player;
+		Skip If(Team Of(Event Player) == Team 2, 1);
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Sphere, Color(Team 1), Event Player,
+			1.500, Visible To Position and Radius);
+		Skip If(Team Of(Event Player) == Team 1, 1);
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Sphere, Color(Team 2), Event Player,
+			1.500, Visible To Position and Radius);
+		Global.powerupEffectSphere = Last Created Entity;
+		Set Healing Received(Event Player, 200);
+		Set Damage Received(Event Player, 50);
+		Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Position Of(Event Player) + Up, 10);
+		Play Effect(All Players(All Teams), Ring Explosion, Color(Yellow), Position Of(Event Player) + Up, 10);
+		Small Message(Event Player, Custom String("Power-Up Active"));
+		Wait(15, Ignore Condition);
+		Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Position Of(Event Player) + Up, 10);
+		Set Healing Received(Event Player, 100);
+		Set Damage Received(Event Player, 100);
+		Global.powerupEffectPlayer = 0;
+		Destroy Effect(Global.powerupEffectSphere);
+	}
+}
+
+rule("POWER-UP ongoing effects")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.powerupEffectPlayer != 0;
+		Is Alive(Global.powerupEffectPlayer) == True;
+	}
+
+	actions
+	{
+		Start Heal Over Time(Players Within Radius(Global.powerupEffectPlayer, 5, Team Of(Global.powerupEffectPlayer), Surfaces),
+			Global.powerupEffectPlayer, 1, 4);
+		Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Eye Position(Global.powerupEffectPlayer) + Down + Vector(
+			Random Real(-1.250, 1.250), Random Integer(-1.250, 1.250), Random Integer(-1.250, 1.250)), 0.750);
+		Wait(0.050, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("POWER-UP attack effects")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker == Global.powerupEffectPlayer;
+		Global.powerupEffectPlayer != 0;
+		Attacker != Victim;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Bad Explosion, Color(Purple), Victim, Event Damage * 0.010);
+	}
+}
+
+rule("brig time event active force hero brig on death")
+{
+	event
+	{
+		Player Died;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Global.EventID == 21;
+	}
+
+	actions
+	{
+		Wait(1.250, Ignore Condition);
+		Start Forcing Player To Be Hero(Event Player, Hero(Brigitte));
+		Event Player.superChargeCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.superJumpCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.stunPulseCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.firestrikeCD = Hero Icon String(Hero(Reinhardt));
+	}
+}
+
+rule("brig custom rein abilities remove")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Brigitte;
+	}
+
+	actions
+	{
+		Event Player.superChargeCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.superJumpCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.stunPulseCD = Hero Icon String(Hero(Reinhardt));
+		Event Player.firestrikeCD = Hero Icon String(Hero(Reinhardt));
+		Wait(1, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("swap to rein on death as brig if brig time event not active")
+{
+	event
+	{
+		Player Died;
+		All;
+		Brigitte;
+	}
+
+	conditions
+	{
+		Global.EventID != 21;
+	}
+
+	actions
+	{
+		Wait(1.250, Ignore Condition);
+		Set Player Allowed Heroes(Event Player, Hero(Reinhardt));
+		Stop Forcing Player To Be Hero(Event Player);
+		Event Player.superJumpCD = 0;
+		Event Player.stunPulseCD = 0;
+		Event Player.firestrikeCD = 0;
+		Event Player.superChargeCD = 0;
+	}
+}
+
+rule("ghost event start")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 42;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Invisible(Event Player, All);
+	}
+}
+
+rule("ghost event sparkle team 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 42;
+		Is Alive(Event Player) == True;
+		Team Of(Event Player) == Team 1;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Team 1), Position Of(Event Player), 1);
+		Wait(0.400, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("ghost event sparkle team 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 42;
+		Is Alive(Event Player) == True;
+		Team Of(Event Player) == Team 2;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Team 2), Position Of(Event Player), 1);
+		Wait(0.400, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("ghost event stop")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID != 42;
+	}
+
+	actions
+	{
+		Set Invisible(Event Player, None);
+	}
+}
+
+rule("double damage event start")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 36;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 200);
+	}
+}
+
+rule("double damage event effects")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 36;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Bad Explosion, Color(Red), Position Of(Event Player) + Vector(Random Real(-0.500, 0.500),
+			Random Real(0, 1), Random Real(-0.500, 0.500)), 1);
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("double damage event stop")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID != 36;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 100);
+	}
+}
+
+rule("speed boost event start")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID == 12;
+		Event Player.isInitialized == True;
+	}
+
+	actions
+	{
+		Event Player.isEventSpeedBuffed = True;
+		Event Player.speedPct *= 2;
+		Set Move Speed(Event Player, Event Player.speedPct);
+	}
+}
+
+rule("speed boost event stop")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.EventID != 12;
+		Event Player.isEventSpeedBuffed == True;
+	}
+
+	actions
+	{
+		Event Player.speedPct *= 0.500;
+		Set Move Speed(Event Player, Event Player.speedPct);
+		Event Player.isEventSpeedBuffed = False;
+	}
+}
+
+rule("skip assembling heroes")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(0);
+	}
+}
+
+rule("killstreak sparkles team 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) > 990;
+		Team Of(Event Player) == Team 1;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Team 1), Event Player, Max Health(Event Player) / 2000);
+		Wait(Square Root(Max Health(Event Player) / 750), Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("killstreak sparkles team 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) > 990;
+		Team Of(Event Player) == Team 2;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Team 2), Event Player, Max Health(Event Player) / 2000);
+		Wait(1500 / Max Health(Event Player), Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("juggernaut skull 1500 HP team 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) >= 1497;
+		Team Of(Event Player) == Team 1;
+	}
+
+	actions
+	{
+		Create Icon(All Players(All Teams), Event Player + Up * 1, Skull, Visible To and Position, Color(Team 1), False);
+		Event Player.juggernautIcon = Last Created Entity;
+	}
+}
+
+rule("juggernaut skull 1500 HP team 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) >= 1497;
+		Team Of(Event Player) == Team 2;
+	}
+
+	actions
+	{
+		Create Icon(All Players(All Teams), Event Player + Up * 1, Skull, Visible To and Position, Color(Team 2), False);
+		Event Player.juggernautIcon = Last Created Entity;
+	}
+}
+
+rule("no skull < 1500 HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) < 1497;
+	}
+
+	actions
+	{
+		Destroy Icon(Event Player.juggernautIcon);
+	}
+}
+
+rule("3rd person CAMERA right reinhardt")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Event Player.cameraToggleCounter % 3 == 1;
+	}
+
+	actions
+	{
+		Start Camera(Event Player, Event Player + World Vector Of(Vector(-0.750, 1, -1), Event Player, Rotation)
+			+ Up * 1.250 + Facing Direction Of(Event Player) * -1, Event Player + Facing Direction Of(Event Player) * 1000, 75);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+		Stop Camera(Event Player);
+	}
+}
+
+rule("3rd person CAMERA mid reinhardt")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Event Player.cameraToggleCounter % 3 == 2;
+	}
+
+	actions
+	{
+		Start Camera(Event Player, Event Player + World Vector Of(Vector(0, 1.250, -1), Event Player, Rotation)
+			+ Up * 1.250 + Facing Direction Of(Event Player) * -1, Event Player + Facing Direction Of(Event Player) * 1000, 75);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+		Stop Camera(Event Player);
+	}
+}
+
+rule("3rd person CAMERA right brigitt")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Brigitte;
+	}
+
+	conditions
+	{
+		Event Player.cameraToggleCounter % 3 == 1;
+	}
+
+	actions
+	{
+		Start Camera(Event Player, Event Player + World Vector Of(Vector(-0.750, 0.500, -0.200), Event Player, Rotation)
+			+ Up * 1.250 + Facing Direction Of(Event Player) * -1.700, Event Player + Facing Direction Of(Event Player) * 1000, 75);
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Stop Camera(Event Player);
+	}
+}
+
+rule("3rd person CAMERA mid brigitte")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Brigitte;
+	}
+
+	conditions
+	{
+		Event Player.cameraToggleCounter % 3 == 2;
+	}
+
+	actions
+	{
+		Start Camera(Event Player, Event Player + World Vector Of(Vector(0, 0.750, -0.200), Event Player, Rotation)
+			+ Up * 1.250 + Facing Direction Of(Event Player) * -1.700, Event Player + Facing Direction Of(Event Player) * 1000, 75);
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Stop Camera(Event Player);
+	}
+}
+
+rule("INTERACT to 3rd person")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Event Player.cameraToggleCounter += 1;
+	}
+}
+
+rule("store ult charged boolean for next tick")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) == 100;
+	}
+
+	actions
+	{
+		Event Player.isUltFullPrevTick = True;
+	}
+}
+
+rule("store ult not charged boolean for next tick")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) != 100;
+	}
+
+	actions
+	{
+		Event Player.isUltFullPrevTick = False;
+	}
+}
+
+rule("inhibit shatter triggering if ult used 0.75 to 3.0 seconds ago")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.750, Ignore Condition);
+		Event Player.inhibitShatter = True;
+		Wait(2.250, Ignore Condition);
+		Event Player.inhibitShatter = False;
+	}
+}

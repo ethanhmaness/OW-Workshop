@@ -1,0 +1,403 @@
+settings
+{
+	main
+	{
+		Description: "[Moira Dodgeball v0.8.0] By ELIMINATED#1572 u/TheRedstoneBlaze --- Dodge enemy orbs while gathering kills for your team with melee or damage orbs. Spamming too many balls too quickly can weaken your throw."
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: Yes
+		Match Voice Chat: Enabled
+		Max Spectators: 12
+		Return To Lobby: Never
+	}
+
+	modes
+	{
+		Team Deathmatch
+		{
+			Score To Win: 60
+
+			disabled maps
+			{
+				Black Forest
+				Black Forest Winter
+				Castillo
+				Necropolis
+				Workshop Chamber
+				Workshop Expanse
+				Workshop Expanse Night
+				Workshop Green Screen
+				Workshop Island
+				Workshop Island Night
+			}
+		}
+
+		General
+		{
+			Hero Limit: Off
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Moira
+			{
+				Biotic Energy Maximum: 20%
+				Biotic Orb Cooldown Time: 30%
+				Biotic Orb Max Damage Scalar: 10%
+				Biotic Orb Max Healing Scalar: 10%
+				Fade Cooldown Time: 67%
+				Health: 10%
+				Jump Vertical Speed: 150%
+				Movement Speed: 150%
+				Secondary Fire: Off
+				Ultimate Generation - Combat Coalescence: 0%
+				Ultimate Generation - Passive Coalescence: 0%
+			}
+
+			enabled heroes
+			{
+				Moira
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: tempBufferStrings
+
+	player:
+		0: speed
+		1: canRecharge
+		2: fadePosArray
+		3: friendlyBeamArray
+		4: enemyBeamArray
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Event Player.speed = 100;
+		Create HUD Text(Event Player, Round To Integer(Event Player.speed, Down), Ability Icon String(Hero(Moira), Button(Ability 2)),
+			Custom String("Speed"), Top, 10, Custom Color(191, 0, Event Player.speed * 2.550, 255), Color(White), Color(White),
+			Visible To String and Color, Default Visibility);
+	}
+}
+
+rule("info text")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Global.tempBufferStrings[0] = Last Text ID;
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 1, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Global.tempBufferStrings[1] = Last Text ID;
+		"You may add credit here if you made updates to this mode.  Do not be a child and remove credit where credit is due."
+		Create HUD Text(All Players(All Teams), Null, Custom String("Moira Dodgeball by ELIMINATED#1572"), Null, Left, 0, Color(White),
+			Color(White), Color(White), Visible To and String, Default Visibility);
+		Wait Until(!Is Waiting For Players, 99999);
+		Destroy HUD Text(Global.tempBufferStrings[0]);
+		Destroy HUD Text(Global.tempBufferStrings[1]);
+	}
+}
+
+rule("speed decrease on throw")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+		Is Button Held(Event Player, Button(Secondary Fire)) == True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Event Player.canRecharge = False;
+		Stop Chasing Player Variable(Event Player, speed);
+		Event Player.speed -= 30;
+		If(Event Player.speed < 0);
+			Event Player.speed = 0;
+		End;
+		Wait(3, Ignore Condition);
+		Event Player.canRecharge = True;
+	}
+}
+
+rule("speed recharge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.canRecharge == True;
+		Event Player.speed < 100;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, speed, 100, 30, Destination and Rate);
+	}
+}
+
+rule("speed stop recharge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.canRecharge == False;
+	}
+
+	actions
+	{
+		Stop Chasing Player Variable(Event Player, speed);
+	}
+}
+
+rule("set proj speed")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Projectile Speed(Event Player, Event Player.speed);
+		Wait(0.250, Ignore Condition);
+		Loop;
+	}
+}
+
+rule("melee kill set full speed")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		disabled Event Damage == 20;
+		disabled Distance Between(Attacker, Victim) < 5;
+		Event Ability == Button(Melee);
+	}
+
+	actions
+	{
+		Attacker.speed = 100;
+		Play Effect(All Players(Team Of(Event Player)), Bad Explosion, Color(Purple), Victim, 2);
+		Play Effect(All Players(Opposite Team Of(Team Of(Event Player))), Bad Explosion, Color(Red), Victim, 2);
+	}
+}
+
+rule("passive ult gen")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 1);
+		Wait(2.500, Ignore Condition);
+		Loop;
+	}
+}
+
+rule("10% ult on kill")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 10);
+	}
+}
+
+rule("skip assembling")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(5);
+	}
+}
+
+rule("fade pos tracker")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.fadePosArray[0] = Eye Position(Event Player);
+		Wait(0.016, Ignore Condition);
+		Event Player.fadePosArray[1] = Eye Position(Event Player);
+		Wait(0.016, Ignore Condition);
+		Event Player.fadePosArray[2] = Eye Position(Event Player);
+		Wait(0.016, Ignore Condition);
+		Event Player.fadePosArray[3] = Eye Position(Event Player);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("fade create beam trail")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Create Beam Effect(All Players(Team Of(Event Player)), Good Beam, Event Player.fadePosArray[0], Event Player.fadePosArray[1],
+			Color(Purple), Visible To Position and Radius);
+		Event Player.friendlyBeamArray[0] = Last Created Entity;
+		Create Beam Effect(All Players(Opposite Team Of(Team Of(Event Player))), Good Beam, Event Player.fadePosArray[0],
+			Event Player.fadePosArray[1], Color(Red), Visible To Position and Radius);
+		Event Player.enemyBeamArray[0] = Last Created Entity;
+		Wait(0.016, Ignore Condition);
+		Create Beam Effect(All Players(Team Of(Event Player)), Good Beam, Event Player.fadePosArray[1], Event Player.fadePosArray[2],
+			Color(Purple), Visible To Position and Radius);
+		Event Player.friendlyBeamArray[1] = Last Created Entity;
+		Create Beam Effect(All Players(Opposite Team Of(Team Of(Event Player))), Good Beam, Event Player.fadePosArray[1],
+			Event Player.fadePosArray[2], Color(Red), Visible To Position and Radius);
+		Event Player.enemyBeamArray[1] = Last Created Entity;
+		Wait(0.016, Ignore Condition);
+		Create Beam Effect(All Players(Team Of(Event Player)), Good Beam, Event Player.fadePosArray[2], Event Player.fadePosArray[3],
+			Color(Purple), Visible To Position and Radius);
+		Event Player.friendlyBeamArray[2] = Last Created Entity;
+		Create Beam Effect(All Players(Opposite Team Of(Team Of(Event Player))), Good Beam, Event Player.fadePosArray[2],
+			Event Player.fadePosArray[3], Color(Red), Visible To Position and Radius);
+		Event Player.enemyBeamArray[2] = Last Created Entity;
+	}
+}
+
+rule("fade end destroy beams")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.friendlyBeamArray[0]);
+		Destroy Effect(Event Player.friendlyBeamArray[1]);
+		Destroy Effect(Event Player.friendlyBeamArray[2]);
+		Destroy Effect(Event Player.enemyBeamArray[0]);
+		Destroy Effect(Event Player.enemyBeamArray[1]);
+		Destroy Effect(Event Player.enemyBeamArray[2]);
+	}
+}

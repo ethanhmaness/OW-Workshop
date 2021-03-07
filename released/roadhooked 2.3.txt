@@ -1,0 +1,692 @@
+settings
+{
+	main
+	{
+		Description: "[Roadhooked FFA/Control v2.3] Press INTERACT to swap weapon types.  Different types have different damage, cooldowns, and effects. You can also Superjump with crouch and Grappling Hook on surfaces! --- By ELIMINATED#1572"
+	}
+
+	lobby
+	{
+		Match Voice Chat: Enabled
+		Max Spectators: 12
+		Return To Lobby: Never
+	}
+
+	modes
+	{
+		Control
+		{
+			Score To Win: 1
+
+			disabled maps
+			{
+				Lijiang Tower Lunar New Year
+			}
+		}
+
+		disabled Deathmatch
+		{
+			Score To Win: 30
+		}
+
+		General
+		{
+			Game Mode Start: Immediately
+			Hero Limit: Off
+			Respawn Time Scalar: 0%
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Roadhog
+			{
+				Ammunition Clip Size Scalar: 80%
+				Chain Hook Cooldown Time: 0%
+				Jump Vertical Speed: 150%
+				Movement Speed: 200%
+				Primary Fire: Off
+				Projectile Speed: 500%
+				Take a Breather Cooldown Time: 0%
+				Ultimate Generation - Combat Whole Hog: 0%
+				Ultimate Generation - Passive Whole Hog: 0%
+				Whole Hog Knockback Scalar: 300%
+			}
+
+			enabled heroes
+			{
+				Roadhog
+			}
+		}
+	}
+}
+
+rule("Initialize player vars (A = weapon type, B = weapon type display text)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Max Health(Event Player, 83.333);
+		Set Projectile Speed(Event Player, 500);
+		Set Healing Dealt(Event Player, 166.666);
+		Set Damage Dealt(Event Player, 700);
+		Event Player.A = 0;
+		Create HUD Text(Event Player, String("Damage"), Null, Null, Right, 0, Color(Purple), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Purple),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+	}
+}
+
+rule("Round dmg values based on weapon type dmg modifier (H = nearest 100)")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Health(Event Player) % 100 < 99 || Health(Event Player) % 100 > 1) == True;
+	}
+
+	actions
+	{
+		Event Player.H = Round To Integer(Health(Event Player) * 0.010, Down) * 100;
+		Skip If(Attacker.A != 0, 1);
+		Damage(Event Player, Attacker, (Health(Event Player) - Event Player.H) / 7);
+		Skip If(Attacker.A != 1, 1);
+		Damage(Event Player, Attacker, (Health(Event Player) - Event Player.H) / 5);
+		Skip If(Attacker.A != 2, 1);
+		Damage(Event Player, Attacker, (Health(Event Player) - Event Player.H) / 3);
+		Skip If(Attacker.A != 3, 1);
+		Damage(Event Player, Attacker, (Health(Event Player) - Event Player.H) / 5);
+		Skip If(Attacker.A != 4, 1);
+		Damage(Event Player, Attacker, (Health(Event Player) - Event Player.H) / 5);
+	}
+}
+
+rule("Weapon Type 0: Damage (A = weapon type, B = weapon type text display, W = wait between swaps)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.A == 4;
+		Event Player.W == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.S);
+		Destroy HUD Text(Event Player.B);
+		Event Player.A = 0;
+		Set Damage Dealt(Event Player, 700);
+		Create HUD Text(Event Player, String("Damage"), Null, Null, Right, 0, Color(Purple), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Purple),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+		Event Player.W = True;
+		Wait(0.500, Ignore Condition);
+		Event Player.W = False;
+	}
+}
+
+rule("Weapon Type 1: Fast (A = weapon type, B = weapon type text display, W = wait between swaps)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.A == 0;
+		Event Player.W == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.S);
+		Destroy HUD Text(Event Player.B);
+		Event Player.A = 1;
+		Set Damage Dealt(Event Player, 500);
+		Create HUD Text(Event Player, String("Fast"), Null, Null, Right, 0, Color(Green), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Green),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+		Event Player.W = True;
+		Wait(0.500, Ignore Condition);
+		Event Player.W = False;
+	}
+}
+
+rule("Weapon Type 2: Burn (A = weapon type, B = weapon type text display, W = wait between swaps)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.A == 1;
+		Event Player.W == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.S);
+		Destroy HUD Text(Event Player.B);
+		Event Player.A = 2;
+		Set Damage Dealt(Event Player, 300);
+		Create HUD Text(Event Player, String("Burn"), Null, Null, Right, 0, Color(Red), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Red),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+		Event Player.W = True;
+		Wait(0.750, Ignore Condition);
+		Event Player.W = False;
+	}
+}
+
+rule("Weapon Type 3: Heal (A = weapon type, B = weapon type text display, W = wait between swaps)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.A == 2;
+		Event Player.W == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.S);
+		Destroy HUD Text(Event Player.B);
+		Event Player.A = 3;
+		Set Damage Dealt(Event Player, 500);
+		Create HUD Text(Event Player, String("Heal"), Null, Null, Right, 0, Color(Yellow), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Yellow),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+		Event Player.W = True;
+		Wait(0.500, Ignore Condition);
+		Event Player.W = False;
+	}
+}
+
+rule("Weapon Type 4: Freeze (A = weapon type, B = weapon type text display, W = wait between swaps)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+		Event Player.A == 3;
+		Event Player.W == False;
+	}
+
+	actions
+	{
+		Destroy Effect(Event Player.S);
+		Destroy HUD Text(Event Player.B);
+		Event Player.A = 4;
+		Set Damage Dealt(Event Player, 500);
+		Create HUD Text(Event Player, String("Freeze"), Null, Null, Right, 0, Color(Blue), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.B = Last Text ID;
+		Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Aura, Color(Blue),
+			Event Player + Up * 2.500, 0.200, Visible To Position and Radius);
+		Event Player.S = Last Created Entity;
+		Event Player.W = True;
+		Wait(0.500, Ignore Condition);
+		Event Player.W = False;
+	}
+}
+
+rule("Slower firing speed based on weapon type")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+		Event Player.A != 1;
+	}
+
+	actions
+	{
+		Wait(0.100, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(0.900, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+rule("Slow movement while healing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 60);
+		Wait(1.700, Ignore Condition);
+		Set Move Speed(Event Player, 100);
+	}
+}
+
+rule("Lifesteal/Overheal if A = 3")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.A == 3;
+	}
+
+	actions
+	{
+		Skip If(Max Health(Event Player) - Health(Event Player) > 1 || Max Health(Event Player) > 701, 1);
+		Set Max Health(Event Player, Max Health(Event Player) / 6 + 16.666);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Event Player, Event Damage);
+	}
+}
+
+rule("Remove overheal on hurt")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) > 501;
+	}
+
+	actions
+	{
+		Set Max Health(Event Player, 83.333);
+	}
+}
+
+rule("burn if attacker A = 2")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker.A == 2;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Attacker, Burning, 1.250);
+		Event Player.I = Attacker;
+	}
+}
+
+rule("Hook CD based on weapon type")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(1, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, False);
+		Wait(1, Ignore Condition);
+		Skip If(Event Player.A == 1, 1);
+		Wait(1, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, True);
+	}
+}
+
+rule("burn dmg tick")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Burning) == True;
+	}
+
+	actions
+	{
+		Wait(0.500, Ignore Condition);
+		Damage(Event Player, Event Player.I, 5);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Freeze if A = 4")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker.A == 4;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Attacker, Frozen, 0.300);
+	}
+}
+
+rule("Heal CD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(1.500, Ignore Condition);
+		Set Ability 2 Enabled(Event Player, False);
+		Wait(4, Ignore Condition);
+		Set Ability 2 Enabled(Event Player, True);
+	}
+}
+
+rule("Primary fire is hook")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Primary Fire)) == True;
+	}
+
+	actions
+	{
+		Press Button(Event Player, Button(Ability 1));
+	}
+}
+
+rule("Crouch Jump charge (C = charge, T = text)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Crouching(Event Player) == True;
+		Event Player.C < 100;
+	}
+
+	actions
+	{
+		Skip If(Event Player.T != 0, 2);
+		Create HUD Text(Event Player, Event Player.C, String("Jump"), Null, Top, 1, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Event Player.T = Last Text ID;
+		Event Player.C += 2;
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Crouch Jump cancel (C = charge, T = text)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Crouching(Event Player) == False;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Event Player.C = 0;
+		Destroy HUD Text(Event Player.T);
+		Event Player.T = 0;
+	}
+}
+
+rule("Crouch Jump release (C = charge, T = text)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Jump)) == True;
+		Event Player.C > 0;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Explosion, Color(White), Position Of(Event Player), Square Root(Event Player.C) * 0.250);
+		Apply Impulse(Event Player, Facing Direction Of(Event Player) + Up * 0.500, Square Root(Event Player.C) * 2, To World,
+			Incorporate Contrary Motion);
+		Event Player.C = 0;
+		Destroy HUD Text(Event Player.T);
+		Event Player.T = 0;
+	}
+}
+
+rule("Kill = 10% ult")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 10);
+	}
+}
+
+rule("Grappling Hook (E = initial eye pos, R = raycast hit pos, D = has dmged in past 0.2s)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(0.150, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, True);
+		Event Player.E = Eye Position(Event Player);
+		Event Player.R = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player)
+			* 20, Null, All Players(All Teams), True);
+		Abort If(Event Player.R == Eye Position(Event Player) + Facing Direction Of(Event Player) * 20);
+		Wait(Distance Between(Eye Position(Event Player), Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player)
+			+ Facing Direction Of(Event Player) * 20, Null, All Players(All Teams), True)) * 0.012, Ignore Condition);
+		Abort If(Event Player.D == True);
+		Apply Impulse(Event Player, Direction Towards(Eye Position(Event Player), Event Player.R), 30, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Explosion, Color(White), Event Player.R, 0.500);
+	}
+}
+
+rule("Track damage event for cancelling grapple hook (D = has dmged in past 0.2s)")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Event Player.D = True;
+		Wait(0.200, Ignore Condition);
+		Event Player.D = False;
+	}
+}
+
+rule("autokill under 100 hp")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Health(Event Player) < 99;
+	}
+
+	actions
+	{
+		Kill(Event Player, Attacker);
+	}
+}
+
+rule("skip assembling heroes in control mode")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+		Control Mode Scoring Team == All Teams;
+	}
+
+	actions
+	{
+		Set Match Time(0);
+	}
+}

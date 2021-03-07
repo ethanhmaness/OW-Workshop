@@ -1,0 +1,540 @@
+settings
+{
+	main
+	{
+		Description: "[Hamster Race v0.1.0] By ELIMINATED#1572 --- Roll as fast as you can and fight to be first in the hamster pack as you race across Overwatch maps."
+	}
+
+	modes
+	{
+		Deathmatch
+		{
+			enabled maps
+			{
+				Ilios Lighthouse
+				Ilios Ruins
+				Ilios Well
+			}
+		}
+
+		General
+		{
+			Game Mode Start: Immediately
+			Hero Limit: Off
+			Spawn Health Packs: Disabled
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Wrecking Ball
+			{
+				Grappling Claw Cooldown Time: 0%
+				Primary Fire: Off
+				Ultimate Generation - Combat Minefield: 0%
+				Ultimate Generation - Passive Minefield: 0%
+			}
+
+			enabled heroes
+			{
+				Wrecking Ball
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: checkptPosArray
+		1: checkptRadArray
+		2: temp
+		3: lapCount
+		4: isPrematch
+
+	player:
+		0: lap
+		1: nextCheckpt
+		2: respawnPoint
+		3: checkptDistance
+		4: placingVal
+}
+
+subroutines
+{
+	0: victory
+}
+
+disabled rule("testing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Create HUD Text(All Players(All Teams), Position Of(Event Player), Null, Null, Left, 0, Color(White), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Facing Direction Of(Event Player), Null, Null, Left, 0, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+	}
+}
+
+disabled rule("testing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Damage(Event Player, Event Player, 50);
+	}
+}
+
+rule("ilios lighthouse")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Ilios Lighthouse);
+	}
+
+	actions
+	{
+		Global.lapCount = 5;
+		Global.checkptPosArray = Empty Array;
+		Global.checkptRadArray = Empty Array;
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(336.430, -26, 22.880));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(368, -29, -55.600));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(290.260, -26, -88.830));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+	}
+}
+
+rule("ilios ruins")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Ilios Ruins);
+	}
+
+	actions
+	{
+		Global.lapCount = 5;
+		Global.checkptPosArray = Empty Array;
+		Global.checkptRadArray = Empty Array;
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(130, 63, -163.750));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(75.630, 70, -156.630));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-56, 65, -180));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(28.570, 60, -177.560));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(71, 64, -174));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+	}
+}
+
+rule("ilios well")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Ilios Well);
+	}
+
+	actions
+	{
+		Global.lapCount = 5;
+		Global.checkptPosArray = Empty Array;
+		Global.checkptRadArray = Empty Array;
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-277, -3, 39));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-194, 1, -2));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-179, 0, -91));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-192, 3, -51));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+		Modify Global Variable(checkptPosArray, Append To Array, Vector(-226, 3, -34));
+		Modify Global Variable(checkptRadArray, Append To Array, 5);
+	}
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Create In-World Text(Filtered Array(Event Player, Event Player.nextCheckpt == 0), Custom String("Lap"),
+			Global.checkptPosArray[Event Player.nextCheckpt], 1, Do Not Clip, Visible To Position and String, Color(White),
+			Default Visibility);
+		Create Icon(Filtered Array(Event Player, Event Player.nextCheckpt == 0), Global.checkptPosArray[Event Player.nextCheckpt], Flag,
+			Visible To and Position, Color(Yellow), True);
+		Create In-World Text(Filtered Array(Event Player, Event Player.nextCheckpt != 0), Custom String("CP{0}", Event Player.nextCheckpt),
+			Global.checkptPosArray[Event Player.nextCheckpt], 0.800, Do Not Clip, Visible To Position and String, Color(White),
+			Default Visibility);
+		Create Icon(Filtered Array(Event Player, Event Player.nextCheckpt != 0), Global.checkptPosArray[Event Player.nextCheckpt],
+			Arrow: Down, Visible To and Position, Color(Green), True);
+		Event Player.respawnPoint = Global.checkptPosArray[0] + Up;
+		Teleport(Event Player, Event Player.respawnPoint + Up);
+		Create HUD Text(Event Player, Null, Custom String("Checkpoint: {0}", (Event Player.nextCheckpt - 1 + (
+			Event Player.nextCheckpt == 0) * Count Of(Global.checkptPosArray)) % Count Of(Global.checkptPosArray)), Custom String(
+			"Lap: {0}/{1}", Event Player.lap, Global.lapCount), Left, -1, Color(White), Color(Green), Color(Yellow), Visible To and String,
+			Default Visibility);
+		If(Global.isPrematch);
+			Set Status(Event Player, Null, Rooted, 9999);
+		End;
+	}
+}
+
+rule("init global")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Disable Built-In Game Mode Scoring;
+		Create HUD Text(Host Player, Null, Custom String("Server Load Avg/Peak"), Custom String("{0}/{1}", Server Load Average,
+			Server Load Peak), Right, 0, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[0], Custom String("1st"), Null, Null, Left,
+			0, Color(Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[1], Custom String("2nd"), Null, Null, Left,
+			0, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[2], Custom String("3rd"), Null, Null, Left,
+			0, Color(Turquoise), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[3], Custom String("4th"), Null, Null, Left,
+			0, Color(Green), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[4], Custom String("5th"), Null, Null, Left,
+			0, Color(Lime Green), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[5], Custom String("6th"), Null, Null, Left,
+			0, Color(Yellow), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[6], Custom String("7th"), Null, Null, Left,
+			0, Color(Orange), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[7], Custom String("8th"), Null, Null, Left,
+			0, Color(Orange), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[8], Custom String("9th"), Null, Null, Left,
+			0, Color(Red), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[9], Custom String("10th"), Null, Null, Left,
+			0, Color(Red), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[10], Custom String("11th"), Null, Null,
+			Left, 0, Color(Purple), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Sorted Array(All Players(All Teams), Current Array Element.placingVal)[11], Custom String("12th"), Null, Null,
+			Left, 0, Color(Purple), Color(White), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("short assembling")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(10);
+	}
+}
+
+rule("pre-match")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == False;
+	}
+
+	actions
+	{
+		Global.isPrematch = True;
+		While(Count Of(Filtered Array(All Players(All Teams), Has Spawned(Current Array Element))) < 0.500 * Count Of(All Players(
+			All Teams)));
+			Wait(0.100, Ignore Condition);
+		End;
+		Big Message(All Players(All Teams), Custom String("Welcome to {0}", Current Map));
+		Big Message(All Players(All Teams), Custom String("Pass through all checkpoints to complete a lap"));
+		Big Message(All Players(All Teams), Custom String("First to complete all laps wins!", Current Map));
+		Wait(3, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("5"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("4"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("3"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("2"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("1"));
+		Wait(1, Ignore Condition);
+		Small Message(All Players(All Teams), Custom String("GO!!!"));
+		Clear Status(All Players(All Teams), Rooted);
+		Global.isPrematch = False;
+	}
+}
+
+rule("create checkpoint effects")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Wait(1, Ignore Condition);
+		If(Count Of(Global.checkptPosArray) > 0);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt == 0), Sphere, Color(Yellow),
+				Global.checkptPosArray[0], Global.checkptRadArray[0], Visible To);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt != 0), Sphere, Color(White),
+				Global.checkptPosArray[0], Global.checkptRadArray[0], Visible To);
+		End;
+		If(Count Of(Global.checkptPosArray) > 1);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt == 1), Sphere, Color(Green),
+				Global.checkptPosArray[1], Global.checkptRadArray[1], Visible To);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt != 1), Sphere, Color(White),
+				Global.checkptPosArray[1], Global.checkptRadArray[1], Visible To);
+		End;
+		If(Count Of(Global.checkptPosArray) > 2);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt == 2), Sphere, Color(Green),
+				Global.checkptPosArray[2], Global.checkptRadArray[2], Visible To);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt != 2), Sphere, Color(White),
+				Global.checkptPosArray[2], Global.checkptRadArray[2], Visible To);
+		End;
+		If(Count Of(Global.checkptPosArray) > 3);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt == 3), Sphere, Color(Green),
+				Global.checkptPosArray[3], Global.checkptRadArray[3], Visible To);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt != 3), Sphere, Color(White),
+				Global.checkptPosArray[3], Global.checkptRadArray[3], Visible To);
+		End;
+		If(Count Of(Global.checkptPosArray) > 4);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt == 4), Sphere, Color(Green),
+				Global.checkptPosArray[4], Global.checkptRadArray[4], Visible To);
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element.nextCheckpt != 4), Sphere, Color(White),
+				Global.checkptPosArray[4], Global.checkptRadArray[4], Visible To);
+		End;
+	}
+}
+
+rule("collect checkpoint")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Global.checkptPosArray[Event Player.nextCheckpt])
+			< Global.checkptRadArray[Event Player.nextCheckpt];
+	}
+
+	actions
+	{
+		Event Player.respawnPoint = Nearest Walkable Position(Global.checkptPosArray[Event Player.nextCheckpt] + Up);
+		If(Event Player.nextCheckpt == 0);
+			If(Event Player.lap == Global.lapCount);
+				Call Subroutine(victory);
+			End;
+			Play Effect(Event Player, Ring Explosion Sound, Color(White), Event Player, 75);
+			Event Player.lap += 1;
+			Set Player Score(Event Player, Event Player.lap);
+		End;
+		Play Effect(Event Player, Buff Impact Sound, Color(White), Event Player, 50);
+		Event Player.nextCheckpt += 1;
+		If(Event Player.nextCheckpt >= Count Of(Global.checkptPosArray));
+			Event Player.nextCheckpt = 0;
+		End;
+	}
+}
+
+rule("update placing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.checkptDistance = Distance Between(Event Player, Global.checkptPosArray[Event Player.nextCheckpt]);
+		Event Player.placingVal = 1 + Count Of(Filtered Array(Filtered Array(All Players(All Teams), Has Spawned(Current Array Element)),
+			Current Array Element.lap > Event Player.lap || (Current Array Element.lap == Event Player.lap && (
+			Event Player.nextCheckpt - 1 + (Event Player.nextCheckpt == 0) * Count Of(Global.checkptPosArray)) % Count Of(
+			Global.checkptPosArray) > (Event Player.nextCheckpt - 1 + (Event Player.nextCheckpt == 0) * Count Of(Global.checkptPosArray))
+			% Count Of(Global.checkptPosArray)) || (
+			Current Array Element.lap == Event Player.lap && Current Array Element.nextCheckpt == Event Player.nextCheckpt && Current Array Element.checkptDistance < Event Player.checkptDistance)));
+		Wait(0.250, Ignore Condition);
+		Loop;
+	}
+}
+
+rule("touch ground sets respawn point")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is On Ground(Event Player) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.respawnPoint = Nearest Walkable Position(Position Of(Event Player));
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("auto-respawn")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Dead(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(2, Ignore Condition);
+		Respawn(Event Player);
+		Wait Until(Is Alive(Event Player), 99999);
+		Teleport(Event Player, Event Player.respawnPoint + Up);
+	}
+}
+
+rule("damage = stun")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	actions
+	{
+		While(Health(Event Player) < 600);
+			If(!Has Status(Event Player, Knocked Down));
+				Set Status(Event Player, Attacker, Knocked Down, 9999);
+			End;
+			Heal(Event Player, Null, 10);
+			Wait(0.100, Ignore Condition);
+		End;
+		Clear Status(Event Player, Knocked Down);
+	}
+}
+
+rule("go to roll when not")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == False;
+	}
+
+	actions
+	{
+		Press Button(Event Player, Button(Ability 1));
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("victory")
+{
+	event
+	{
+		Subroutine;
+		victory;
+	}
+
+	actions
+	{
+		For Global Variable(temp, 0, 40, 2);
+			Play Effect(All Players(All Teams), Ring Explosion, Color(Yellow), Global.checkptPosArray[0], Global.temp);
+			Play Effect(All Players(All Teams), Ring Explosion Sound, Color(Yellow), Event Player, Global.temp * 2);
+			Play Effect(All Players(All Teams), Good Explosion, Color(Yellow), Event Player, Global.temp);
+		End;
+		Declare Player Victory(Event Player);
+	}
+}

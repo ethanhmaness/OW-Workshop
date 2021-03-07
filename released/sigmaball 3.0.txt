@@ -1,0 +1,840 @@
+settings
+{
+	main
+	{
+		Description: "[Sigmaball Deathmatch v3.0.0] Forget Mei, we all know Sigma is the real ball master.  Gain ammo for using balls and rocks from kills, pickups, or catching enemy balls.  You can also kill with melee or Kinetic Grasp if you're out of balls.  Ult will grant extra balls, even exceeding the maximum! --- By ELIMINATED#1572 /u/TheRedstoneBlaze"
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: Yes
+		Match Voice Chat: Enabled
+		Max Spectators: 12
+		Return To Lobby: Never
+	}
+
+	modes
+	{
+		Deathmatch
+		{
+			disabled maps
+			{
+				Ilios Lighthouse
+				Ilios Ruins
+				Ilios Well
+				Lijiang Control Center
+				Lijiang Control Center Lunar New Year
+				Lijiang Garden
+				Lijiang Garden Lunar New Year
+				Lijiang Night Market
+				Lijiang Night Market Lunar New Year
+				Nepal Sanctum
+				Nepal Shrine
+				Nepal Village
+				Oasis City Center
+				Oasis Gardens
+				Oasis University
+				Workshop Chamber
+				Workshop Expanse
+				Workshop Expanse Night
+				Workshop Green Screen
+				Workshop Island
+				Workshop Island Night
+			}
+		}
+
+		General
+		{
+			Game Mode Start: Immediately
+		}
+	}
+
+	heroes
+	{
+		General
+		{
+			Sigma
+			{
+				Accretion Cooldown Time: 1%
+				Accretion Knockback Scalar: 300%
+				Damage Dealt: 500%
+				Experimental Barrier Cooldown Time: 200%
+				Experimental Barrier Recharge Rate: 500%
+				Health: 10%
+				Jump Vertical Speed: 125%
+				Kinetic Grasp Cooldown Time: 30%
+				Movement Speed: 150%
+				Projectile Gravity: 500%
+				Projectile Speed: 200%
+				Ultimate Generation - Combat Gravitic Flux: 0%
+				Ultimate Generation - Passive Gravitic Flux: 217%
+			}
+
+			enabled heroes
+			{
+				Sigma
+			}
+		}
+	}
+}
+
+variables
+{
+	global:
+		0: deathPositionsArray
+		1: ammoPickupsPosArray
+		2: ammoPickupsEffectArray
+		3: temp
+		4: ammoPickupsTextArray
+		5: maxAmmo
+		6: ultAmmo
+		7: noUltAttack
+		8: ammoVisualizer
+		9: ultOnKill
+
+	player:
+		0: ammo
+		2: succAttacker
+		3: ammoTransferBall
+		4: ammoTransferBallPos
+		5: showInfo
+		6: ultShieldEffect
+		7: ammoDisplayPolygonCoordsArray
+		8: prevAmmoCount
+		9: ammoDisplayPos1
+		10: ammoDisplayPos2
+		11: ammoDisplayPos3
+		12: ammoDisplayPos4
+		13: ammoDisplayPos5
+		14: ammoDisplayPos6
+}
+
+disabled rule("dummy")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create Dummy Bot(Hero(Sigma), All Teams, 5, Closest Player To(Vector(0, 0, 0), All Teams), Vector(0, 0, 0));
+		Create Icon(All Players(All Teams), Players In Slot(5, All Teams), Arrow: Down, Visible To and Position, Color(White), True);
+		Wait(0.250, Ignore Condition);
+		Kill(Players In Slot(5, All Teams), Null);
+	}
+}
+
+disabled rule("dummy shoot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Press Button(Players In Slot(5, All Teams), Button(Primary Fire));
+		Event Player.ammo += 1;
+	}
+}
+
+rule("init global")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Global.deathPositionsArray = Empty Array;
+		Global.ammoPickupsPosArray = Empty Array;
+		Modify Global Variable(ammoPickupsPosArray, Append To Array, Vector(0, -100, 0));
+		Modify Global Variable(ammoPickupsPosArray, Append To Array, Vector(0, -100, 0));
+		Modify Global Variable(ammoPickupsPosArray, Append To Array, Vector(0, -100, 0));
+		Modify Global Variable(ammoPickupsPosArray, Append To Array, Vector(0, -100, 0));
+		Modify Global Variable(ammoPickupsPosArray, Append To Array, Vector(0, -100, 0));
+		Create HUD Text(Host Player, Null, Custom String("Server Load"), Server Load Average, Right, 0, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Global.maxAmmo = Workshop Setting Integer(Custom String("Gameplay"), Custom String("Max Ammo"), 3, 1, 3, 0);
+		Global.ultAmmo = Workshop Setting Integer(Custom String("Gameplay"), Custom String("Ammo Gained On Ult"), 3, 0, 3, 0);
+		Global.noUltAttack = Workshop Setting Toggle(Custom String("Gameplay"), Custom String("Disable Gravitic Flux"), False, 0);
+		Global.ultOnKill = Workshop Setting Integer(Custom String("Gameplay"), Custom String("Ult Charge On Kill"), 10, 0, 100, 0);
+		Global.ammoVisualizer = Workshop Setting Toggle(Custom String("Visual"), Custom String(
+			"Enable Overhead Ammo Display (May cause lag!)"), False, 0);
+	}
+}
+
+rule("init player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		"first spawn player starts with max ammo instead of 1"
+		Event Player.ammo = Global.maxAmmo;
+		Event Player.showInfo = True;
+		Set Damage Dealt(Event Player, 500);
+		Set Max Health(Event Player, 62.500);
+		Set Projectile Gravity(Event Player, 500);
+		Event Player.ammoDisplayPos1 = Position Of(Event Player);
+		Event Player.ammoDisplayPos2 = Position Of(Event Player);
+		Event Player.ammoDisplayPos3 = Position Of(Event Player);
+		Event Player.ammoDisplayPos4 = Position Of(Event Player);
+		Event Player.ammoDisplayPos5 = Position Of(Event Player);
+		Event Player.ammoDisplayPos6 = Position Of(Event Player);
+	}
+}
+
+rule("init player ammo display")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Has Spawned(Event Player) == True;
+		Global.ammoVisualizer == True;
+	}
+
+	actions
+	{
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 1), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos1,
+			0.080, Visible To Position and Radius);
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 2), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos2,
+			0.080, Visible To Position and Radius);
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 3), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos3,
+			0.080, Visible To Position and Radius);
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 4), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos4,
+			0.080, Visible To Position and Radius);
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 5), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos5,
+			0.080, Visible To Position and Radius);
+		Create Effect(Filtered Array(All Players(All Teams), Is Alive(Event Player)
+			&& Current Array Element != Event Player && Event Player.ammo >= 6), Sphere, Color(Sky Blue), Event Player.ammoDisplayPos6,
+			0.080, Visible To Position and Radius);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos1, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[0]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[0]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[0])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos2, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[1]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[1]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[1])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos3, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[2]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[2]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[2])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos4, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[3]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[3]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[3])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos5, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[4]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[4]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[4])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+		Chase Player Variable At Rate(Event Player, ammoDisplayPos6, Position Of(Event Player) + Up * 2.700 + Vector(X Component Of(
+			Event Player.ammoDisplayPolygonCoordsArray[5]) * -1 * Cosine From Degrees(Horizontal Facing Angle Of(Event Player)),
+			Y Component Of(Event Player.ammoDisplayPolygonCoordsArray[5]), X Component Of(Event Player.ammoDisplayPolygonCoordsArray[5])
+			* Sine From Degrees(Horizontal Facing Angle Of(Event Player))), 50, Destination and Rate);
+	}
+}
+
+rule("ammo display polygon coords")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.prevAmmoCount != Event Player.ammo;
+		Global.ammoVisualizer == True;
+	}
+
+	actions
+	{
+		If(Event Player.ammo == 1);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(0, 0, 0);
+		Else If(Event Player.ammo == 2);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(-0.080, 0, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[1] = Vector(0.080, 0, 0);
+		Else If(Event Player.ammo == 3);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(-0.080, -0.070, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[1] = Vector(0.080, -0.070, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[2] = Vector(0, 0.069, 0);
+		Else If(Event Player.ammo == 4);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(-0.113, 0, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[1] = Vector(0.113, 0, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[2] = Vector(0, 0.113, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[3] = Vector(0, -0.113, 0);
+		Else If(Event Player.ammo == 5);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(-0.080, -0.101, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[1] = Vector(0.080, -0.101, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[2] = Vector(0.129, 0.051, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[3] = Vector(-0.129, 0.051, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[4] = Vector(0, 0.151, 0);
+		Else If(Event Player.ammo >= 6);
+			Event Player.ammoDisplayPolygonCoordsArray[0] = Vector(-0.160, 0, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[1] = Vector(0.160, 0, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[2] = Vector(0.080, 0.139, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[3] = Vector(-0.080, 0.139, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[4] = Vector(0.080, -0.139, 0);
+			Event Player.ammoDisplayPolygonCoordsArray[5] = Vector(-0.080, -0.139, 0);
+		End;
+		Event Player.prevAmmoCount = Event Player.ammo;
+	}
+}
+
+rule("init ammo text")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(Filtered Array(All Players(All Teams), !Is Game In Progress), Null, Custom String(" "), Custom String(" "), Top,
+			10, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), !Is Game In Progress), Null, Custom String(" "), Custom String(" "), Top,
+			10, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Null, Custom String(" "), Custom String(" "), Top, 10, Color(White), Color(White), Color(
+			White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 0), Custom String(" "), Null, Null, Top, 100,
+			Color(Sky Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 1), Custom String("1"), Null, Null, Top, 100,
+			Color(Sky Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		If(Global.maxAmmo < 2);
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 2), Custom String("1 2"), Null, Null, Top,
+				100, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		Else;
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 2), Custom String("1 2"), Null, Null, Top,
+				100, Color(Sky Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		End;
+		If(Global.maxAmmo < 3);
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 3), Custom String("1 2 3"), Null, Null, Top,
+				100, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		Else;
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 3), Custom String("1 2 3"), Null, Null, Top,
+				100, Color(Sky Blue), Color(White), Color(White), Visible To and String, Default Visibility);
+		End;
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 4), Custom String("1 2 3 4"), Null, Null, Top,
+			100, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo == 5), Custom String("1 2 3 4 5"), Null, Null,
+			Top, 100, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo >= 6), Custom String("1 2 3 4 5 6"), Null, Null,
+			Top, 100, Color(Aqua), Color(White), Color(White), Visible To and String, Default Visibility);
+		If(Global.maxAmmo > 1);
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo <= Global.maxAmmo), Null, Custom String(
+				"Max: {0}", Global.maxAmmo), Null, Top, 101, Color(White), Color(Sky Blue), Color(White), Visible To and String,
+				Default Visibility);
+		End;
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.ammo > Global.maxAmmo), Null, Custom String(
+			"Overloaded!"), Null, Top, 101, Color(White), Color(Aqua), Color(White), Visible To and String, Default Visibility);
+	}
+}
+
+rule("init info text")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(Filtered Array(All Players(All Teams), !Current Array Element.showInfo), Custom String("[{0}] - Show Info",
+			Input Binding String(Button(Interact))), Null, Null, Left, 0, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.showInfo), Custom String("[{0}] - Hide Info",
+			Input Binding String(Button(Interact))), Null, Null, Left, 0, Color(Turquoise), Color(White), Color(White),
+			Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.showInfo), Null, Null, Custom String(
+			"Everything is a one-hit kill"), Left, 1, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.showInfo), Null, Null, Custom String(
+			"Get ammo from kills, catches, or orb pickups"), Left, 2, Color(White), Color(White), Color(White), Visible To and String,
+			Default Visibility);
+		If(Global.ultAmmo > 0);
+			Create HUD Text(Filtered Array(All Players(All Teams), Current Array Element.showInfo), Null, Null, Custom String(
+				"Ultimate grants +{0} ammo", Global.ultAmmo), Left, 3, Color(White), Color(White), Color(White), Visible To and String,
+				Default Visibility);
+		End;
+	}
+}
+
+rule("info toggle")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Event Player.showInfo = !Event Player.showInfo;
+	}
+}
+
+rule("player respawn")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.ammo = 1;
+		Event Player.ammoDisplayPos1 = Position Of(Event Player);
+		Event Player.ammoDisplayPos2 = Position Of(Event Player);
+		Event Player.ammoDisplayPos3 = Position Of(Event Player);
+		Event Player.ammoDisplayPos4 = Position Of(Event Player);
+		Event Player.ammoDisplayPos5 = Position Of(Event Player);
+		Event Player.ammoDisplayPos6 = Position Of(Event Player);
+	}
+}
+
+rule("shoot single ball")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Null, Knocked Down, 0.050);
+		Event Player.ammo -= 1;
+	}
+}
+
+rule("no ammo disable shoot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.ammo < 1;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, False);
+		Set Ability 2 Enabled(Event Player, False);
+	}
+}
+
+rule("yes ammo enable shoot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.ammo >= 1;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, True);
+		Set Ability 2 Enabled(Event Player, True);
+	}
+}
+
+rule("shoot rock")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, False);
+		Set Projectile Gravity(Event Player, 20);
+		Set Projectile Speed(Event Player, 50);
+		Wait(0.800, Ignore Condition);
+		Event Player.ammo -= 1;
+	}
+}
+
+rule("end rock reset projectile speed")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Projectile Gravity(Event Player, 500);
+		Set Projectile Speed(Event Player, 100);
+		If(Event Player.ammo >= 1);
+			Set Primary Fire Enabled(Event Player, True);
+		End;
+	}
+}
+
+rule("on kill 10% ult")
+{
+	event
+	{
+		Player Dealt Final Blow;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.ammo <= Global.maxAmmo;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Ultimate Charge Percent(Event Player) + 10);
+	}
+}
+
+rule("on death ammo transfer, add death pos")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Attacker != Victim;
+	}
+
+	actions
+	{
+		Modify Global Variable(deathPositionsArray, Append To Array, Nearest Walkable Position(Ray Cast Hit Position(Position Of(
+			Event Player) + Up, Position Of(Event Player) + Down * 100, Null, Event Player, False)));
+		Victim.ammoTransferBallPos = Eye Position(Victim);
+		Create Effect(All Players(All Teams), Orb, Color(Sky Blue), Event Player.ammoTransferBallPos, 0.200,
+			Visible To Position and Radius);
+		Victim.ammoTransferBall = Last Created Entity;
+		Chase Player Variable At Rate(Event Player, ammoTransferBallPos, Eye Position(Attacker), 20 + Distance Between(Attacker, Victim)
+			* 2, Destination and Rate);
+		While(Distance Between(Victim.ammoTransferBallPos, Eye Position(Attacker)) > 1);
+			Wait(0.016, Ignore Condition);
+		End;
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Sky Blue), Attacker, 1);
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Event Player, 30);
+		Destroy Effect(Victim.ammoTransferBall);
+		Victim.ammoTransferBallPos = 0;
+		If(Attacker.ammo < Global.maxAmmo);
+			Attacker.ammo += 1;
+		End;
+	}
+}
+
+rule("succ catch ammo")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Health(Event Player) > 25;
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		If(Event Player.ammo < Global.maxAmmo);
+			Event Player.ammo += Min(Global.maxAmmo - Event Player.ammo, Round To Integer((Health(Event Player) - 25) / 30, Down));
+			Small Message(Event Player, Custom String("Caught!"));
+		End;
+		Wait(0.030, Ignore Condition);
+		Damage(Event Player, Null, Health(Event Player) - 25);
+	}
+}
+
+rule("succ attacker")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		While(Is Using Ability 1(Event Player));
+			Filtered Array(All Players(All Teams), Current Array Element != Event Player && Is In View Angle(Event Player, Eye Position(
+				Current Array Element), 90) && Distance Between(Eye Position(Current Array Element), Eye Position(Event Player)
+				+ Facing Direction Of(Event Player)) < 5).succAttacker = Event Player;
+			Apply Impulse(Event Player, Facing Direction Of(Event Player), 0.200, To World, Incorporate Contrary Motion);
+			Apply Impulse(Event Player, Up, 0.040, To World, Incorporate Contrary Motion);
+			Wait(0.016, Ignore Condition);
+		End;
+	}
+}
+
+rule("succ victim")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.succAttacker != 0;
+	}
+
+	actions
+	{
+		If(Distance Between(Eye Position(Event Player), Eye Position(Event Player.succAttacker) + Facing Direction Of(
+			Event Player.succAttacker)) < 1.500);
+			Damage(Event Player, Event Player.succAttacker, 50);
+		End;
+		Apply Impulse(Event Player, Direction Towards(Event Player, Event Player.succAttacker + Facing Direction Of(
+			Event Player.succAttacker)), 1, To World, Incorporate Contrary Motion);
+		Apply Impulse(Event Player, Direction Towards(Event Player, Event Player.succAttacker + Facing Direction Of(
+			Event Player.succAttacker)), 0.200, To World, Incorporate Contrary Motion);
+		Wait(0.016, Ignore Condition);
+		If(Distance Between(Eye Position(Event Player), Eye Position(Event Player.succAttacker) + Facing Direction Of(
+			Event Player.succAttacker)) > 5);
+			Event Player.succAttacker = 0;
+		End;
+		If(!Is Using Ability 1(Event Player.succAttacker));
+			Event Player.succAttacker = 0;
+		End;
+		Loop If Condition Is True;
+	}
+}
+
+rule("short assembling")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Set Match Time(15);
+	}
+}
+
+rule("create ammo pickups")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		"An array is stored of death positions for every non-environmental death.  When a new pickup is needed, it is created at the furthest death pos from any player, and that death pos is removed from the list"
+		Global.deathPositionsArray != Empty Array;
+		Index Of Array Value(Global.ammoPickupsPosArray, Vector(0, -100, 0)) != -1;
+		Is True For Any(Global.deathPositionsArray, Players Within Radius(Current Array Element, 15, All Teams, Off) == Empty Array)
+			== True;
+	}
+
+	actions
+	{
+		"runs for index 0-4"
+		For Global Variable(temp, 0, 5, 1);
+			Abort If Condition Is False;
+			If(Global.ammoPickupsPosArray[Global.temp] == Vector(0, -100, 0));
+				Global.ammoPickupsPosArray[Global.temp] = Last Of(Sorted Array(Global.deathPositionsArray, Distance Between(Current Array Element,
+					Closest Player To(Current Array Element, All Teams))));
+				Modify Global Variable(deathPositionsArray, Remove From Array By Value, Last Of(Sorted Array(Global.deathPositionsArray,
+					Distance Between(Current Array Element, Closest Player To(Current Array Element, All Teams)))));
+				Create Effect(All Players(All Teams), Orb, Color(Sky Blue), Up + Global.ammoPickupsPosArray[Global.temp], 1, None);
+				Global.ammoPickupsEffectArray[Global.temp] = Last Created Entity;
+				Create In-World Text(All Players(All Teams), Custom String("+1"), Up + Global.ammoPickupsPosArray[Global.temp], 1.500, Do Not Clip,
+					String, Color(White), Default Visibility);
+				Global.ammoPickupsTextArray[Global.temp] = Last Text ID;
+			End;
+		End;
+		Loop If Condition Is True;
+	}
+}
+
+rule("use ammo pickup")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Event Player.ammo < Global.maxAmmo;
+		Is True For Any(Global.ammoPickupsPosArray, Distance Between(Current Array Element + Up, Position Of(Event Player))
+			< 1.250 || Distance Between(Current Array Element + Up, Eye Position(Event Player)) < 1.250) == True;
+	}
+
+	actions
+	{
+		Global.temp = Index Of Array Value(Global.ammoPickupsPosArray, First Of(Sorted Array(Global.ammoPickupsPosArray, Distance Between(
+			Event Player, Current Array Element))));
+		Global.ammoPickupsPosArray[Global.temp] = Vector(0, -100, 0);
+		Destroy Effect(Global.ammoPickupsEffectArray[Global.temp]);
+		Global.ammoPickupsEffectArray[Global.temp] = 0;
+		Destroy In-World Text(Global.ammoPickupsTextArray[Global.temp]);
+		Global.ammoPickupsTextArray[Global.temp] = 0;
+		Event Player.ammo += 1;
+		Play Effect(All Players(All Teams), Good Pickup Effect, Color(Sky Blue), Event Player, 1);
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Event Player, 30);
+	}
+}
+
+rule("ult")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		If(Global.noUltAttack);
+			Cancel Primary Action(Event Player);
+		Else;
+			Create Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Sphere, Color(Red), Eye Position(
+				Event Player), 1.500, Visible To Position and Radius);
+			Event Player.ultShieldEffect = Last Created Entity;
+			Set Status(Event Player, Null, Invincible, 9999);
+			While(Is Using Ultimate(Event Player));
+				Wait(0.016, Ignore Condition);
+			End;
+			Clear Status(Event Player, Invincible);
+			Destroy Effect(Event Player.ultShieldEffect);
+			Play Effect(Filtered Array(All Players(All Teams), Current Array Element != Event Player), Good Explosion, Color(Red),
+				Event Player, 4);
+			Play Effect(Event Player, Good Explosion, Color(Blue), Event Player, 4);
+		End;
+		Play Effect(All Players(All Teams), Explosion Sound, Color(White), Event Player, 30);
+		Play Effect(All Players(All Teams), Bad Explosion, Color(Sky Blue), Event Player, 3);
+		Play Effect(All Players(All Teams), Buff Impact Sound, Color(White), Event Player, 40);
+		Event Player.ammo += 3;
+	}
+}
